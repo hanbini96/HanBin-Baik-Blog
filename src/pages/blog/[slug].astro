@@ -53,7 +53,7 @@ if (postError) {
         // Convert markdown to HTML at build time
         (() => {
           const html = post.content ? marked.parse(post.content) : '';
-          return <article class="prose prose-zinc mt-6" set:html={html} />;
+          return <article class="prose prose-zinc dark:prose-invert mt-6" set:html={html} />;
         })()
       }
     </>
