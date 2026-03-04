@@ -2,6 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import BaseLink from '../../components/BaseLink.astro';
 import { supabase } from '../../lib/supabase';
+import { marked } from 'marked';
 
 // 1. Tell Astro which slugs to build at *build time*
 export async function getStaticPaths() {
@@ -48,7 +49,13 @@ if (postError) {
   {post ? (
     <>
       <h1 class="text-3xl font-semibold">{post.title}</h1>
-      <article class="prose prose-zinc mt-6" set:html={post.content} />
+      {
+        // Convert markdown to HTML at build time
+        (() => {
+          const html = post.content ? marked.parse(post.content) : '';
+          return <article class="prose prose-zinc mt-6" set:html={html} />;
+        })()
+      }
     </>
   ) : (
     <p>Post not found.</p>
