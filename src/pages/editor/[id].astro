@@ -1,0 +1,36 @@
+---
+import Base from '../../layouts/Base.astro';
+import ProtectedLayout from '../../components/ProtectedLayout';
+import PostEditor from '../../components/PostEditor';
+import { supabase } from '../../lib/supabase';
+
+export async function getStaticPaths() {
+  // Fetch all posts from the database
+  const { data: posts, error } = await supabase
+    .from('posts')
+    .select('id')
+    .limit(1000); // Adjust limit as needed
+
+  if (error) {
+    console.error('Error fetching posts for static generation:', error);
+    // Return at least the 'new' path
+    return [{ params: { id: 'new' } }];
+  }
+
+  // Generate paths for 'new' post and all existing posts
+  const paths = [
+    { params: { id: 'new' } },
+    ...(posts?.map((post) => ({ params: { id: post.id } })) || []),
+  ];
+
+  return paths;
+}
+
+const { id } = Astro.params;
+---
+
+<Base title={id === 'new' ? 'Create Post' : 'Edit Post'}>
+  <ProtectedLayout client:load>
+    <PostEditor postId={id} client:load />
+  </ProtectedLayout>
+</Base>

@@ -1,0 +1,11 @@
+---
+import Base from '../../layouts/Base.astro';
+import ProtectedLayout from '../../components/ProtectedLayout';
+import EditorPostList from '../../components/EditorPostList';
+---
+
+<Base title="Editor">
+  <ProtectedLayout client:load>
+    <EditorPostList client:load />
+  </ProtectedLayout>
+</Base>
