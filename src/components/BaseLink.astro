@@ -7,8 +7,11 @@ interface Props {
 
 const { href, class: className } = Astro.props;
 
-// prepend BASE_URL automatically
-const url = `${import.meta.env.BASE_URL}${href}`;
+// prepend BASE_URL automatically, handling slashes properly
+const baseUrl = import.meta.env.BASE_URL || '/';
+const cleanBase = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+const cleanHref = href.startsWith('/') ? href : `/${href}`;
+const url = `${cleanBase}${cleanHref}`;
 ---
 
 <a href={url} class={className}>
