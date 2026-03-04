@@ -1,3 +1,101 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Theme variables: default (light) and device-preferred dark override */
+:root {
+	--site-text: #0f172a; /* slate-900 */
+	--site-heading: #0b1220; /* slightly darker for headings in light */
+	--link-color: #0b61ff;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--site-text: #e6eef8; /* light text for dark backgrounds */
+		--site-heading: #ffffff; /* bright headings in dark mode */
+		--link-color: #7cc1ff;
+	}
+}
+
+/* Apply variables to base elements. These are static at build-time where supported
+	 (browsers that respect prefers-color-scheme) and will fall back to dark theme
+	 when not supported because your layout uses dark classes. */
+html, body {
+	color: var(--site-text);
+}
+
+/* Make prose headings lighter/different color than body text */
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6 {
+	color: var(--site-heading);
+}
+
+a {
+	color: var(--link-color);
+}
+
+/* Stronger overrides for dark theme to counter Tailwind utility classes */
+@media (prefers-color-scheme: dark) {
+	body,
+	.prose,
+	.prose * {
+		color: var(--site-text) !important;
+	}
+
+	body h1,
+	body h2,
+	body h3,
+	body h4,
+	body h5,
+	body h6,
+	.prose h1,
+	.prose h2,
+	.prose h3,
+	.prose h4,
+	.prose h5,
+	.prose h6 {
+		color: var(--site-heading) !important;
+	}
+
+	.prose a,
+	a {
+		color: var(--link-color) !important;
+	}
+}
+
+/* Fallback for class-based dark mode */
+.dark {
+	--site-text: #e6eef8;
+	--site-heading: #ffffff;
+	--link-color: #7cc1ff;
+}
+
+.dark body,
+.dark .prose,
+.dark .prose * {
+	color: var(--site-text) !important;
+}
+
+.dark body h1,
+.dark body h2,
+.dark body h3,
+.dark body h4,
+.dark body h5,
+.dark body h6,
+.dark .prose h1,
+.dark .prose h2,
+.dark .prose h3,
+.dark .prose h4,
+.dark .prose h5,
+.dark .prose h6 {
+	color: var(--site-heading) !important;
+}
+
+.dark .prose a,
+.dark a {
+	color: var(--link-color) !important;
+}
