@@ -16,6 +16,9 @@ jobs:
     env:
       PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      LAST_BUILD: ${{ github.sha }}
+      LAST_COMMIT: ${{ github.event.head_commit.message }}
+      BUILD_TIMESTAMP: ${{ github.event.repository.updated_at }}
     steps:
       - uses: actions/checkout@v4
       - uses: withastro/action@v2

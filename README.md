@@ -92,27 +92,52 @@ Once these policies are in place, your blog can safely read and write posts from
 
 ### 🏥 Infrastructure Monitoring & Health Checks
 
-The project includes comprehensive infrastructure monitoring with health check endpoints:
+**Important Note**: This is a **static site** built with Astro and deployed to GitHub Pages. There is **no server running** at runtime, so traditional health check endpoints won't work.
 
-**Health Check Endpoints:**
-- **Basic Health**: `/api/health` - Simple health status
-- **Comprehensive Health**: `/api/health.json` - Detailed health with Supabase connectivity
-- **Methods**: GET, POST, HEAD
-- **Cache**: Disabled for real-time monitoring
+#### Static Status Page
+- **Status Page**: `/status.json` - Static status information built with the site
+- **Features**:
+  - Last build information
+  - Build timestamp
+  - Monitoring links
+  - Operational status
+- **Cache**: 5 minutes (public cache)
 
-**Features:**
-- ✅ Supabase database connectivity verification
-- ✅ System resource monitoring (memory, uptime)
-- ✅ GitHub Actions automated health checks
-- ✅ Uptime tracking and alerting
-- ✅ Performance metrics collection
+**Example:**
+```bash
+curl https://your-domain.com/status.json
+```
+
+#### GitHub Actions Monitoring (Recommended)
+The project includes automated monitoring through GitHub Actions:
+
+- **Scheduled Checks**: Every 30 minutes
+- **Workflow Status**: Checks if deployments succeed
+- **Uptime Monitoring**: Verifies site availability
+- **Alerts**: GitHub notifications on failures
+
+**Setup External Monitoring:**
+Since this is a static site, use these approaches:
+
+1. **UptimeRobot** (Free tier available)
+   - Monitor: `https://your-domain.com/`
+   - Interval: 5 minutes
+   - Alerts: Email, SMS, webhook
+
+2. **GitHub Actions Status**
+   - Check workflow runs: https://github.com/hanbini96/HanBin-Baik-Blog/actions
+   - Scheduled monitoring every 30 minutes
+
+3. **Plausible Analytics** (Recommended for static sites)
+   - Privacy-focused analytics
+   - Real user monitoring
+   - No cookies required
+   - Simple 5-minute setup
 
 **Setup:**
 ```bash
-# Test health endpoints locally
-pnpm run dev
-curl http://localhost:4321/api/health.json
-```
+# Add Plausible Analytics to your site
+# See: https://plausible.io/docs
 
 ### 🏆 Recommended: Plausible Analytics
 For personal blogs, **Plausible Analytics** is the best choice:
