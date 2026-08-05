@@ -37,20 +37,21 @@ jobs:
     needs: deploy
     runs-on: ubuntu-latest
     steps:
-      - name: Check Health Endpoint
+      - name: Check Status Endpoint
         run: |
           # Wait for deployment to complete
           sleep 60
           
-          # Test health endpoint
-          HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://hanbini96.github.io/HanBin-Baik-Blog/api/health.json)
+          # Test static status endpoint (works with GitHub Pages)
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://hanbini96.github.io/HanBin-Baik-Blog/status.json)
           
-          if [ "$HEALTH_STATUS" != "200" ]; then
-            echo "Health check failed with status code: $HEALTH_STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "❌ Status check failed with status code: $STATUS"
+            echo "This could indicate a deployment issue"
             exit 1
           fi
           
-          echo "Health check passed successfully"
+          echo "✅ Status check passed successfully"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

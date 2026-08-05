@@ -1,0 +1,259 @@
+name: Performance Monitoring & Benchmarking
+
+# Trigger on pushes to main/dev-update, PRs, weekly schedule, and manual trigger
+on:
+  push:
+    branches: [ main, dev-update ]
+  pull_request:
+    branches: [ main, dev-update ]
+  schedule:
+    - cron: '0 2 * * 1'  # Every Monday at 2 AM UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  pages: read
+
+jobs:
+  lighthouse:
+    name: Run Lighthouse Audits
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full history for comparison
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm install -g lighthouse @lhci/cli
+      
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v10
+        with:
+          urls: |
+            https://hanbini96.github.io/HanBin-Baik-Blog/
+            https://hanbini96.github.io/HanBin-Baik-Blog/blog
+            https://hanbini96.github.io/HanBin-Baik-Blog/about
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+          configPath: ./lighthouserc.js
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+          LHCI_TOKEN: ${{ secrets.LHCI_TOKEN }}
+
+  performance-benchmark:
+    name: Collect Performance Metrics
+    needs: lighthouse
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm install -g lighthouse
+      
+      - name: Download Lighthouse reports
+        uses: actions/download-artifact@v4
+        with:
+          name: lighthouse-results
+          path: ./lighthouse-reports
+      
+      - name: Parse and store performance metrics
+        run: |
+          # Create performance history directory
+          mkdir -p .performance-history
+          
+          # Get current timestamp
+          TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
+          DATE=$(date +%Y-%m-%d)
+          
+          # Create metrics file
+          cat > .performance-history/perf-$TIMESTAMP.json << 'PERFDATA'
+          {
+            "timestamp": "$TIMESTAMP",
+            "date": "$DATE",
+            "service": "hanbin-baik-blog",
+            "version": "1.0.0",
+            "metrics": {}
+          }
+          PERFDATA
+          
+          # Parse Lighthouse reports and extract key metrics
+          echo "Extracting performance metrics from Lighthouse reports..."
+          
+          # Extract metrics from JSON reports
+          for report in ./lighthouse-reports/*.json; do
+            if [ -f "$report" ]; then
+              echo "Processing $report..."
+              
+              # Extract performance score
+              PERF_SCORE=$(node -e "
+                try {
+                  const data = require('./' + process.argv[1]);
+                  console.log(Math.round((data.lhr.categories.performance?.score || 0) * 100));
+                } catch(e) {
+                  console.log('0');
+                }
+              " "$report")
+              
+              # Extract Core Web Vitals
+              LCP=$(node -e "
+                try {
+                  const data = require('./' + process.argv[1]);
+                  const audit = data.lhr.audits['largest-contentful-paint'];
+                  console.log(Math.round(audit?.numericValue || 0));
+                } catch(e) {
+                  console.log('0');
+                }
+              " "$report")
+              
+              FCP=$(node -e "
+                try {
+                  const data = require('./' + process.argv[1]);
+                  const audit = data.lhr.audits['first-contentful-paint'];
+                  console.log(Math.round(audit?.numericValue || 0));
+                } catch(e) {
+                  console.log('0');
+                }
+              " "$report")
+              
+              CLS=$(node -e "
+                try {
+                  const data = require('./' + process.argv[1]);
+                  const audit = data.lhr.audits['cumulative-layout-shift'];
+                  console.log((audit?.numericValue || 0).toFixed(3));
+                } catch(e) {
+                  console.log('0.000');
+                }
+              " "$report")
+              
+              FID=$(node -e "
+                try {
+                  const data = require('./' + process.argv[1]);
+                  const audit = data.lhr.audits['first-input-delay'];
+                  console.log(Math.round(audit?.numericValue || 0));
+                } catch(e) {
+                  console.log('0');
+                }
+              " "$report")
+              
+              TBT=$(node -e "
+                try {
+                  const data = require('./' + process.argv[1]);
+                  const audit = data.lhr.audits['total-blocking-time'];
+                  console.log(Math.round(audit?.numericValue || 0));
+                } catch(e) {
+                  console.log('0');
+                }
+              " "$report")
+              
+              # Add to metrics file
+              cat >> .performance-history/perf-$TIMESTAMP.json << METRICS
+              "metrics": {
+                "performanceScore": $PERF_SCORE,
+                "firstContentfulPaint": $FCP,
+                "largestContentfulPaint": $LCP,
+                "cumulativeLayoutShift": $CLS,
+                "firstInputDelay": $FID,
+                "totalBlockingTime": $TBT,
+                "reportUrl": "$report"
+              }
+              METRICS
+            fi
+          done
+          
+          # Close JSON file
+          echo "}" >> .performance-history/perf-$TIMESTAMP.json
+          
+          echo "Performance metrics collected and stored in .performance-history/perf-$TIMESTAMP.json"
+          echo ""
+          cat .performance-history/perf-$TIMESTAMP.json | jq '.metrics'
+        
+      - name: Commit performance metrics
+        run: |
+          # Configure git
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Add performance metrics
+          git add .performance-history/
+          
+          # Check if there are changes
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: Update performance metrics [skip ci]"
+            git push
+            echo "✅ Performance metrics committed and pushed"
+          else
+            echo "ℹ️ No changes in performance metrics"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  performance-summary:
+    name: Generate Performance Summary
+    needs: performance-benchmark
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Generate performance summary
+        run: |
+          echo "📊 Performance Monitoring Summary"
+          echo "================================"
+          echo ""
+          
+          # List recent performance files
+          echo "📈 Recent Performance Metrics:"
+          ls -lt .performance-history/ | head -6 | awk '{print "  - " $9}'
+          echo ""
+          
+          # Show latest metrics
+          LATEST_FILE=$(ls -t .performance-history/ | head -1)
+          if [ -n "$LATEST_FILE" ]; then
+            echo "📋 Latest Metrics ($LATEST_FILE):"
+            cat .performance-history/$LATEST_FILE | jq '.metrics'
+          fi
+          echo ""
+          
+          echo "✅ Performance monitoring completed successfully"
+        
+  performance-alerts:
+    name: Performance Alerts
+    needs: performance-benchmark
+    runs-on: ubuntu-latest
+    if: failure()
+    steps:
+      - name: Performance regression detected
+        run: |
+          echo "⚠️ ⚠️ ⚠️"
+          echo "Performance regression detected!"
+          echo ""
+          echo "Check the Lighthouse CI results:"
+          echo "https://github.com/hanbini96/HanBin-Baik-Blog/actions"
+          echo ""
+          echo "Recent performance metrics:"
+          ls -lt .performance-history/ | head -3 | awk '{print "  - " $9}'
+          echo ""
+          echo "Please review the performance reports and address any regressions."
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
