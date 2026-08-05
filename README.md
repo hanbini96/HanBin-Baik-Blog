@@ -87,3 +87,78 @@ Once these policies are in place, your blog can safely read and write posts from
 - **Create admin UI.** Add routes under `src/pages/admin` with React components to edit and publish posts.
 - **Use Supabase Storage.** Upload images or videos to Supabase Storage buckets and reference them in your posts.
 - **Analytics and SEO.** Integrate Umami or Plausible for analytics and set meta tags in `Base.astro` for better SEO.
+
+## 📊 Monitoring & Analytics Setup
+
+### 🏥 Infrastructure Monitoring & Health Checks
+
+The project includes comprehensive infrastructure monitoring with health check endpoints:
+
+**Health Check Endpoints:**
+- **Basic Health**: `/api/health` - Simple health status
+- **Comprehensive Health**: `/api/health.json` - Detailed health with Supabase connectivity
+- **Methods**: GET, POST, HEAD
+- **Cache**: Disabled for real-time monitoring
+
+**Features:**
+- ✅ Supabase database connectivity verification
+- ✅ System resource monitoring (memory, uptime)
+- ✅ GitHub Actions automated health checks
+- ✅ Uptime tracking and alerting
+- ✅ Performance metrics collection
+
+**Setup:**
+```bash
+# Test health endpoints locally
+pnpm run dev
+curl http://localhost:4321/api/health.json
+```
+
+### 🏆 Recommended: Plausible Analytics
+For personal blogs, **Plausible Analytics** is the best choice:
+- ✅ Free for < 10k pageviews/month
+- ✅ Privacy-focused (no cookie consent needed)
+- ✅ Lightweight (< 1ms performance impact)
+- ✅ Simple 5-minute setup
+- ✅ Beautiful, easy-to-understand dashboard
+
+**Setup:** https://plausible.io/docs
+
+### 📋 Alternative Options
+- **Umami Analytics**: Free self-hosted alternative (https://umami.is)
+- **Google Analytics 4**: Comprehensive but requires cookie consent
+- **Sentry**: ❌ **NOT recommended** for personal blogs (overkill, expensive)
+
+See **[SENTRY_VS_ALTERNATIVES.md](SENTRY_VS_ALTERNATIVES.md)** for detailed comparison.
+
+## 📊 Stabilization & Observability
+
+This project includes a comprehensive stabilization and observability initiative to improve website reliability, performance, and monitoring. See the following resources:
+
+### 📋 Issues & Tracking
+- **[GitHub Issues Dashboard](https://github.com/hanbini96/HanBin-Baik-Blog/issues)** - All stabilization issues assigned to hanbini96
+- **[Stabilization Implementation Guide](STABILIZATION_IMPLEMENTATION_GUIDE.md)** - Complete roadmap and implementation guide
+
+### 📊 Documentation Files
+- **[STABILIZATION_PLAN.md](STABILIZATION_PLAN.md)** - Overall plan and strategy for stabilization
+- **[BENCHMARKS.md](BENCHMARKS.md)** - Performance and stability benchmarks with historical tracking
+- **[OBSERVABILITY_SETUP.md](OBSERVABILITY_SETUP.md)** - Detailed guide for setting up monitoring and observability
+
+### 🚀 Working Branches
+All stabilization work is organized into feature branches:
+- `feature/error-tracking-lightweight` - Lightweight error tracking with React Error Boundaries
+- `feature/performance-monitoring` - Performance monitoring and benchmarking
+- `feature/real-user-monitoring` - Real user monitoring with Plausible Analytics
+- `feature/infrastructure-monitoring` - Infrastructure health checks
+- `feature/benchmark-documentation` - Benchmark documentation system
+- `feature/advanced-observability` - Advanced monitoring features
+- `feature/alerting-system` - Alerting and incident response
+
+### 🎯 Current Issues (Assigned to hanbini96)
+- **[#4 - Error Tracking with Sentry](https://github.com/hanbini96/HanBin-Baik-Blog/issues/4)** - High Priority
+- **[#5 - Performance Monitoring & Benchmarking](https://github.com/hanbini96/HanBin-Baik-Blog/issues/5)** - High Priority  
+- **[#6 - Real User Monitoring with Plausible](https://github.com/hanbini96/HanBin-Baik-Blog/issues/6)** - Medium Priority
+- **[#7 - Infrastructure Monitoring & Health Checks](https://github.com/hanbini96/HanBin-Baik-Blog/issues/7)** - High Priority
+- **[#8 - Benchmark Documentation System](https://github.com/hanbini96/HanBin-Baik-Blog/issues/8)** - Medium Priority
+- **[#9 - Advanced Observability Features](https://github.com/hanbini96/HanBin-Baik-Blog/issues/9)** - Low Priority
+- **[#10 - Alerting System & Incident Response](https://github.com/hanbini96/HanBin-Baik-Blog/issues/10)** - Medium Priority

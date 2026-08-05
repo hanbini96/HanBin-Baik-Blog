@@ -1,0 +1,252 @@
+{
+  "$schema": "https://json.schemastore.org/monitoring-config.json",
+  "project": "HanBin-Baik-Blog",
+  "version": "1.0.0",
+  "description": "Infrastructure monitoring configuration for HanBin-Baik-Blog",
+  "health_endpoints": {
+    "basic": {
+      "url": "/api/health",
+      "method": "GET",
+      "expected_status": 200,
+      "expected_response": {
+        "status": "healthy"
+      },
+      "interval": 300000,
+      "timeout": 5000,
+      "retries": 3
+    },
+    "comprehensive": {
+      "url": "/api/health.json",
+      "method": "GET",
+      "expected_status": 200,
+      "expected_response": {
+        "status": "healthy",
+        "checks": {
+          "database": "connected"
+        }
+      },
+      "interval": 600000,
+      "timeout": 10000,
+      "retries": 3,
+      "include_headers": true
+    }
+  },
+  "alerting": {
+    "critical": {
+      "thresholds": {
+        "uptime": 99.9,
+        "response_time": 2000,
+        "error_rate": 1.0
+      },
+      "channels": ["email", "slack", "webhook"],
+      "escalation": {
+        "after_minutes": 5,
+        "repeat_every_minutes": 30
+      }
+    },
+    "warning": {
+      "thresholds": {
+        "uptime": 99.5,
+        "response_time": 1000,
+        "error_rate": 0.5
+      },
+      "channels": ["email", "slack"]
+    }
+  },
+  "synthetic_monitoring": {
+    "pages": [
+      {
+        "url": "/",
+        "name": "Home Page",
+        "interval": 300000,
+        "timeout": 10000
+      },
+      {
+        "url": "/blog",
+        "name": "Blog Page",
+        "interval": 600000,
+        "timeout": 15000
+      },
+      {
+        "url": "/about",
+        "name": "About Page",
+        "interval": 600000,
+        "timeout": 15000
+      }
+    ],
+    "api_endpoints": [
+      {
+        "url": "/api/health.json",
+        "name": "Health Check API",
+        "interval": 300000,
+        "timeout": 10000
+      }
+    ]
+  },
+  "uptime_monitoring": {
+    "providers": [
+      {
+        "name": "UptimeRobot",
+        "type": "http",
+        "interval": 300000,
+        "monitors": [
+          {
+            "friendly_name": "HanBin-Baik-Blog Health",
+            "url": "https://hanbini96.github.io/HanBin-Baik-Blog/api/health.json",
+            "method": "GET",
+            "interval": 300000
+          }
+        ]
+      },
+      {
+        "name": "GitHub Actions",
+        "type": "workflow",
+        "interval": 1800000,
+        "workflows": [
+          {
+            "name": "Deploy to GitHub Pages",
+            "schedule": "*/30 * * * *"
+          }
+        ]
+      }
+    ]
+  },
+  "performance_monitoring": {
+    "metrics": [
+      {
+        "name": "Health Check Response Time",
+        "unit": "milliseconds",
+        "thresholds": {
+          "warning": 1000,
+          "critical": 2000
+        },
+        "collection_interval": 300000
+      },
+      {
+        "name": "Uptime Percentage",
+        "unit": "percent",
+        "thresholds": {
+          "warning": 99.5,
+          "critical": 99.0
+        },
+        "collection_interval": 3600000
+      },
+      {
+        "name": "Error Rate",
+        "unit": "percent",
+        "thresholds": {
+          "warning": 0.5,
+          "critical": 1.0
+        },
+        "collection_interval": 300000
+      }
+    ]
+  },
+  "dashboard": {
+    "sections": [
+      {
+        "title": "Service Health",
+        "panels": [
+          {
+            "type": "status",
+            "title": "Overall Status",
+            "endpoint": "/api/health.json"
+          },
+          {
+            "type": "timeseries",
+            "title": "Uptime Trend",
+            "metric": "uptime_percentage"
+          },
+          {
+            "type": "timeseries",
+            "title": "Response Time",
+            "metric": "health_check_response_time"
+          }
+        ]
+      },
+      {
+        "title": "System Resources",
+        "panels": [
+          {
+            "type": "gauge",
+            "title": "Memory Usage",
+            "metric": "memory_usage_rss"
+          },
+          {
+            "type": "timeseries",
+            "title": "Heap Usage",
+            "metric": "memory_heap_usage"
+          },
+          {
+            "type": "stat",
+            "title": "Uptime",
+            "metric": "process_uptime"
+          }
+        ]
+      },
+      {
+        "title": "Database Status",
+        "panels": [
+          {
+            "type": "status",
+            "title": "Database Connection",
+            "endpoint": "/api/health.json"
+          },
+          {
+            "type": "timeseries",
+            "title": "Query Response Time",
+            "metric": "database_query_time"
+          },
+          {
+            "type": "stat",
+            "title": "Posts Count",
+            "metric": "posts_count"
+          }
+        ]
+      }
+    ]
+  },
+  "incident_management": {
+    "escalation_policies": [
+      {
+        "level": 1,
+        "condition": "error_rate > 1.0",
+        "actions": ["notify_team_email", "notify_team_slack"]
+      },
+      {
+        "level": 2,
+        "condition": "uptime < 99.5",
+        "actions": ["notify_team_email", "notify_team_slack", "page_on_call"]
+      },
+      {
+        "level": 3,
+        "condition": "uptime < 99.0",
+        "actions": ["notify_team_email", "notify_team_slack", "page_on_call", "declare_incident"]
+      }
+    ],
+    "response_times": {
+      "acknowledge": 15,
+      "resolve": 60
+    }
+  },
+  "maintenance_windows": {
+    "scheduled": [
+      {
+        "description": "Monthly updates",
+        "schedule": "first monday of month 02:00-03:00 UTC",
+        "notify_team": true
+      },
+      {
+        "description": "Quarterly maintenance",
+        "schedule": "first monday of quarter 02:00-04:00 UTC",
+        "notify_team": true
+      }
+    ]
+  },
+  "documentation_links": {
+    "setup_guide": "INFRASTRUCTURE_MONITORING.md",
+    "health_endpoints": "src/pages/api/health.json.ts",
+    "workflow_config": ".github/workflows/github_pages.yml",
+    "monitoring_config": "monitoring-config.json"
+  }
+}
