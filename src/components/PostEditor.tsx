@@ -223,4 +223,5 @@ export default function PostEditor({ postId }: PostEditorProps) {
       </div>
     </div>
   </ErrorBoundary>
-) 
+    );
+  } 
