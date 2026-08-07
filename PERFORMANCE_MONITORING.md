@@ -606,6 +606,6 @@ Stored in `.performance-history/` directory:
 
 ---
 
-**Maintained by**: hanbini96  
-**Last Updated**: $(date)  
+**Maintained by**: hanbini96
+**Last Updated**: $(date)
 **Next Review**: September 2026
