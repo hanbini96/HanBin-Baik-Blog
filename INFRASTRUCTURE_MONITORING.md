@@ -18,7 +18,7 @@ This document describes the infrastructure monitoring and health check system im
 ```json
 {
   "status": "healthy",
-  "timestamp": "2025-08-05T00:35:00.000Z",
+  "timestamp": "2026-08-05T00:35:00.000Z",
   "service": "hanbin-baik-blog",
   "version": "1.0.0",
   "checks": {
@@ -39,7 +39,7 @@ This document describes the infrastructure monitoring and health check system im
 ```json
 {
   "status": "healthy",
-  "timestamp": "2025-08-05T00:35:00.000Z",
+  "timestamp": "2026-08-05T00:35:00.000Z",
   "service": "hanbin-baik-blog",
   "version": "1.0.0",
   "uptime": 1234.56,
@@ -435,5 +435,5 @@ This system ensures rapid detection of issues and provides the foundation for bu
 ---
 
 **Maintained by**: hanbini96  
-**Last Updated**: August 2025  
-**Next Review**: September 2025
+**Last Updated**: August 2026  
+**Next Review**: September 2026

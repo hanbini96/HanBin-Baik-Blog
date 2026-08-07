@@ -441,5 +441,5 @@ This is a **static site** built with Astro and deployed to GitHub Pages. Key con
 
 **Maintained by**: hanbini96  
 **Last Updated**: $(date)  
-**Next Review**: September 2025  
+**Next Review**: September 2026  
 **Documentation**: [PERFORMANCE_MONITORING.md](PERFORMANCE_MONITORING.md)

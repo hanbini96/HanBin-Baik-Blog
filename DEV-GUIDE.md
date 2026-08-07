@@ -472,6 +472,6 @@ Types:
 
 ---
 
-**Last Updated**: August 2025  
+**Last Updated**: August 2026  
 **Project Version**: 0.1.0  
 **Maintainer**: HanBin Baik

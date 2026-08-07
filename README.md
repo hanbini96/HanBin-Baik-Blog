@@ -156,7 +156,34 @@ For personal blogs, **Plausible Analytics** is the best choice:
 
 See **[SENTRY_VS_ALTERNATIVES.md](SENTRY_VS_ALTERNATIVES.md)** for detailed comparison.
 
-## 📊 Stabilization & Observability
+## 🛡️ Error Tracking & Observability
+
+This project includes comprehensive error tracking and observability features to ensure site reliability and performance.
+
+### Lightweight Error Tracking ✅
+
+Implemented a lightweight error tracking system using React Error Boundaries:
+- ✅ **Zero cost** - No external dependencies
+- ✅ **Minimal impact** - < 1ms performance overhead
+- ✅ **Privacy-focused** - No user data collection
+- ✅ **Easy to use** - Simple implementation
+
+**Features:**
+- React Error Boundaries for component-level error handling
+- Global error handlers for uncaught exceptions
+- Error logging endpoint for tracking errors
+- User-friendly error recovery UI
+
+**Setup:**
+```bash
+# Error tracking is automatically initialized
+# All React components are wrapped with ErrorBoundary
+# Errors are logged to console and error logging endpoint
+```
+
+**Documentation:** See [ERROR_TRACKING_SETUP.md](ERROR_TRACKING_SETUP.md) for complete implementation details.
+
+### Stabilization & Observability
 
 This project includes a comprehensive stabilization and observability initiative to improve website reliability, performance, and monitoring. See the following resources:
 
