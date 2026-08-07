@@ -3,6 +3,8 @@
  * Provides global error handling and error boundary setup
  */
 
+import ErrorBoundary from '../components/ErrorBoundary';
+
 /**
  * Sets up global error handlers for the application
  */
