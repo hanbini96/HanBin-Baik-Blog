@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/useAuth';
 import { getBasePath } from '../lib/useBasePath';
 import MarkdownEditor from './MarkdownEditor';
+import ErrorBoundary from './ErrorBoundary';
 
 interface PostEditorProps {
   postId?: string;
@@ -138,18 +139,19 @@ export default function PostEditor({ postId }: PostEditorProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center mb-8">
-        <h2 className="text-3xl font-bold text-white">
-          {postId && postId !== 'new' ? 'Edit Post' : 'Create New Post'}
-        </h2>
-        <a
-          href={getBasePath('/editor')}
-          className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded text-white font-medium transition"
-        >
-          ← Back
-        </a>
-      </div>
+    <ErrorBoundary>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center mb-8">
+          <h2 className="text-3xl font-bold text-white">
+            {postId && postId !== 'new' ? 'Edit Post' : 'Create New Post'}
+          </h2>
+          <a
+            href={getBasePath('/editor')}
+            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded text-white font-medium transition"
+          >
+            ← Back
+          </a>
+        </div>
 
       {error && (
         <div className="p-4 bg-red-900 border border-red-700 rounded text-red-100">
@@ -220,5 +222,5 @@ export default function PostEditor({ postId }: PostEditorProps) {
         </div>
       </div>
     </div>
-  );
-}
+  </ErrorBoundary>
+) 

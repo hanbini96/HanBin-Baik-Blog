@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import ErrorBoundary from './ErrorBoundary';
 
 interface MarkdownEditorProps {
   value: string;
@@ -27,18 +28,19 @@ export default function MarkdownEditor({
   }, [value]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold text-white">Content</h3>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowPreview(!showPreview)}
-            className="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-white text-sm transition hidden sm:inline-block"
-          >
-            {showPreview ? 'Hide Preview' : 'Show Preview'}
-          </button>
+    <ErrorBoundary>
+      <div className="space-y-4">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-white">Content</h3>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowPreview(!showPreview)}
+              className="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-white text-sm transition hidden sm:inline-block"
+            >
+              {showPreview ? 'Hide Preview' : 'Show Preview'}
+            </button>
+          </div>
         </div>
-      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 h-96">
         {/* Editor */}
@@ -82,5 +84,5 @@ export default function MarkdownEditor({
         </div>
       </div>
     </div>
-  );
-}
+  </ErrorBoundary>
+) 

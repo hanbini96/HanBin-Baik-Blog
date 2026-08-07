@@ -1,0 +1,14 @@
+---
+// Astro wrapper for the React ErrorBoundary component
+import ErrorBoundary from './ErrorBoundary';
+
+interface Props {
+  children: any;
+}
+
+const { children } = Astro.props;
+---
+
+<ErrorBoundary>
+  <Fragment set:html={children} />
+</ErrorBoundary>
