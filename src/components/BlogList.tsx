@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import ErrorBoundary from './ErrorBoundary';
 
 type Post = {
   id: string;
@@ -28,17 +29,19 @@ export default function BlogList() {
   }, []);
 
   return (
-    <ul className="mt-4 space-y-2">
-      {posts.map((p) => (
-        <li key={p.id}>
-          <a className="underline" href={`/blog/${p.slug}`}>
-            {p.title}
-          </a>{' '}
-          <span className="text-sm text-gray-500">
-            — {new Date(p.created_at).toLocaleDateString()}
-          </span>
-        </li>
-      ))}
-    </ul>
+    <ErrorBoundary>
+      <ul className="mt-4 space-y-2">
+        {posts.map((p) => (
+          <li key={p.id}>
+            <a className="underline" href={`/blog/${p.slug}`}>
+              {p.title}
+            </a>{' '}
+            <span className="text-sm text-gray-500">
+              — {new Date(p.created_at).toLocaleDateString()}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </ErrorBoundary>
   );
 }

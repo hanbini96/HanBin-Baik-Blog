@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/useAuth';
 import { getBasePath } from '../lib/useBasePath';
+import ErrorBoundary from './ErrorBoundary';
 
 interface Post {
   id: string;
@@ -67,16 +68,17 @@ export default function EditorPostList() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center mb-8">
-        <h2 className="text-3xl font-bold text-white">My Posts</h2>
-        <a
-          href={getBasePath('/editor/new')}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white font-medium transition"
-        >
-          + New Post
-        </a>
-      </div>
+    <ErrorBoundary>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center mb-8">
+          <h2 className="text-3xl font-bold text-white">My Posts</h2>
+          <a
+            href={getBasePath('/editor/new')}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white font-medium transition"
+          >
+            + New Post
+          </a>
+        </div>
 
       {error && (
         <div className="p-4 bg-red-900 border border-red-700 rounded text-red-100">
@@ -142,5 +144,5 @@ export default function EditorPostList() {
         </div>
       )}
     </div>
-  );
-}
+  </ErrorBoundary>
+) 

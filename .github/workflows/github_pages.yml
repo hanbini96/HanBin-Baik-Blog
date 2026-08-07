@@ -2,6 +2,8 @@ name: Deploy to GitHub Pages
 on:
   push: { branches: [ main ] }
   workflow_dispatch: {}
+  schedule:
+    - cron: '*/30 * * * *'  # Run every 30 minutes for health checks
 
 permissions:
   contents: read
@@ -14,6 +16,9 @@ jobs:
     env:
       PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      LAST_BUILD: ${{ github.sha }}
+      LAST_COMMIT: ${{ github.event.head_commit.message }}
+      BUILD_TIMESTAMP: ${{ github.event.repository.updated_at }}
     steps:
       - uses: actions/checkout@v4
       - uses: withastro/action@v2
@@ -27,3 +32,51 @@ jobs:
     steps:
       - name: Publish to GitHub Pages
         uses: actions/deploy-pages@v4
+
+  health-check:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Status Endpoint
+        run: |
+          # Wait for deployment to complete
+          sleep 60
+          
+          # Test static status endpoint (works with GitHub Pages)
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://hanbini96.github.io/HanBin-Baik-Blog/status.json)
+          
+          if [ "$STATUS" != "200" ]; then
+            echo "❌ Status check failed with status code: $STATUS"
+            echo "This could indicate a deployment issue"
+            exit 1
+          fi
+          
+          echo "✅ Status check passed successfully"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  uptime-monitoring:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Monitor Uptime
+        run: |
+          # Simple uptime monitoring
+          START_TIME=$(date +%s)
+          
+          # Make multiple requests to test reliability
+          for i in {1..5}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://hanbini96.github.io/HanBin-Baik-Blog/)
+            if [ "$STATUS" != "200" ]; then
+              echo "Uptime check $i failed with status: $STATUS"
+              exit 1
+            fi
+            sleep 10
+          done
+          
+          END_TIME=$(date +%s)
+          UPTIME=$((END_TIME - START_TIME))
+          
+          echo "Uptime monitoring completed successfully in ${UPTIME}s"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

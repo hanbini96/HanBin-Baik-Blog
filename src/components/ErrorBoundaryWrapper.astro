@@ -1,0 +1,14 @@
+---
+// ErrorBoundary wrapper for Astro pages with React components
+import ErrorBoundary from './ErrorBoundary';
+
+interface Props {
+  children: any;
+}
+
+const { children } = Astro.props;
+---
+
+<ErrorBoundary>
+  {children}
+</ErrorBoundary>

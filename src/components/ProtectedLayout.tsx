@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/useAuth';
+import ErrorBoundary from './ErrorBoundary';
 
 interface ProtectedLayoutProps {
   children: React.ReactNode;
@@ -68,22 +69,24 @@ export default function ProtectedLayout({ children }: ProtectedLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
-      <div className="sticky top-0 bg-slate-900 border-b border-slate-700 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-xl font-bold text-white">Editor</h1>
-          <div className="flex items-center gap-4">
-            <span className="text-slate-300 text-sm">{session.user?.email}</span>
-            <button
-              onClick={logout}
-              className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded text-white text-sm transition"
-            >
-              Logout
-            </button>
+    <ErrorBoundary>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
+        <div className="sticky top-0 bg-slate-900 border-b border-slate-700 shadow-sm">
+          <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 className="text-xl font-bold text-white">Editor</h1>
+            <div className="flex items-center gap-4">
+              <span className="text-slate-300 text-sm">{session.user?.email}</span>
+              <button
+                onClick={logout}
+                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded text-white text-sm transition"
+              >
+                Logout
+              </button>
+            </div>
           </div>
         </div>
+        <div className="max-w-6xl mx-auto px-4 py-8">{children}</div>
       </div>
-      <div className="max-w-6xl mx-auto px-4 py-8">{children}</div>
-    </div>
+    </ErrorBoundary>
   );
 }
