@@ -9,6 +9,10 @@ on:
   schedule:
     - cron: '0 2 * * 1'  # Every Monday at 2 AM UTC
   workflow_dispatch: {}
+  
+env:
+  LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+  LHCI_TOKEN: ${{ secrets.LHCI_TOKEN }}
 
 permissions:
   contents: write
@@ -23,6 +27,8 @@ jobs:
     env:
       PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+      LHCI_TOKEN: ${{ secrets.LHCI_TOKEN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -38,11 +44,18 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 22
           cache: 'pnpm'
       
       - name: Install dependencies
         run: pnpm install
+
+      - name: Update browser compatibility data
+        run: |
+          echo "Updating browser compatibility data..."
+          npx update-browserslist-db@latest || echo "Warning: browserslist update failed, continuing..."
+          pnpm add -D baseline-browser-mapping@latest || echo "Warning: baseline-browser-mapping install failed, continuing..."
+          echo "Browser data update completed"
 
       - name: Setup pnpm global bin directory
         run: |
@@ -115,11 +128,18 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 22
           cache: 'pnpm'
-      
+
       - name: Install dependencies
         run: pnpm install
+
+      - name: Update browser compatibility data
+        run: |
+          echo "Updating browser compatibility data..."
+          npx update-browserslist-db@latest || echo "Warning: browserslist update failed, continuing..."
+          pnpm add -D baseline-browser-mapping@latest || echo "Warning: baseline-browser-mapping install failed, continuing..."
+          echo "Browser data update completed"
 
       - name: Setup pnpm global bin directory
         run: |
@@ -266,7 +286,7 @@ jobs:
               " "$report")
               
               # Add to metrics file
-              cat >> .performance-history/perf-$TIMESTAMP.json << METRICS
+              cat >> .performance-history/perf-$TIMESTAMP.json << 'METRICS'
               "metrics": {
                 "performanceScore": $PERF_SCORE,
                 "firstContentfulPaint": $FCP,
@@ -275,8 +295,8 @@ jobs:
                 "firstInputDelay": $FID,
                 "totalBlockingTime": $TBT,
                 "reportUrl": "$report"
-              }
-              METRICS
+            }
+METRICS
             fi
           done
           
