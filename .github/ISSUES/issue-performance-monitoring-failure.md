@@ -74,54 +74,22 @@ Also check the file mode to verify the file is executable.
 
 ### 1. Fix pnpm Installation (🔴 **CRITICAL**)
 
-**Current Problem**: The workflow relies on `actions/setup-node@v4` with `cache: pnpm` but doesn't install pnpm itself.
+**Current Problem**: The workflow was using `pnpm install -g` which is incorrect syntax for installing global packages with pnpm.
 
 **Current Configuration**:
 ```yaml
-- uses: actions/setup-node@v4
-  with:
-    node-version: 20
-    cache: 'pnpm'
+- name: Install global dependencies
+  run: pnpm install -g lighthouse @lhci/cli
 ```
 
-**Required Fix**: Add explicit pnpm installation step
+**Required Fix**: Use `pnpm add -g` instead of `pnpm install -g`
 
 ```yaml
-# Add this step before using pnpm
-- name: Install pnpm
-  run: npm install -g pnpm
-
-# Or use the official pnpm action
-- uses: pnpm/action-setup@v3
-  with:
-    version: 10.22.0
+- name: Install global dependencies
+  run: pnpm add -g lighthouse @lhci/cli
 ```
 
-**Recommended Solution**: Use the official pnpm action
-
-```yaml
-jobs:
-  lighthouse:
-    name: Run Lighthouse Audits
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 10.22.0
-          run_install: false
-      
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'pnpm'
-```
+**Status**: ✅ **FIXED** - Changed `pnpm install -g` to `pnpm add -g` in both occurrences in the workflow file.
 
 ### 2. Update Node.js Version (🟡 **HIGH**)
 
