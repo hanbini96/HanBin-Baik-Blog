@@ -40,6 +40,8 @@ jobs:
       
       - name: Install dependencies
         run: pnpm install
+        env:
+          PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
 
       - name: Install global dependencies
         run: pnpm install -g lighthouse @lhci/cli
@@ -86,6 +88,8 @@ jobs:
       
       - name: Install dependencies
         run: pnpm install
+        env:
+          PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
       
       - name: Install global dependencies
         run: pnpm install -g lighthouse

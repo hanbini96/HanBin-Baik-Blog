@@ -41,6 +41,8 @@ jobs:
         with:
           path: .
           node-version: 22
+        env:
+          PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
 
   deploy:
     needs: build
