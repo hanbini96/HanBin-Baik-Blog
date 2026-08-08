@@ -32,6 +32,12 @@ jobs:
           node-version: 22
           cache: 'pnpm'
       
+      - name: Ensure pnpm is default package manager
+        run: |
+          # Set pnpm as the default package manager
+          npm config set package-manager pnpm
+          npm config set package-manager-version 10.22.0
+      
       - name: Enable Corepack and install pnpm
         run: |
           corepack enable
@@ -98,6 +104,12 @@ jobs:
         with:
           node-version: 22
           cache: 'pnpm'
+      
+      - name: Ensure pnpm is default package manager
+        run: |
+          # Set pnpm as the default package manager
+          npm config set package-manager pnpm
+          npm config set package-manager-version 10.22.0
       
       - name: Enable Corepack and install pnpm
         run: |
