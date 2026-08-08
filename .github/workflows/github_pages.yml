@@ -54,8 +54,25 @@ jobs:
 
       - name: Verify build output
         run: |
-          echo "Build completed successfully"
-          ls -lh dist/ | head -20
+          echo "📊 Build Output Verification"
+          echo "Size: $(du -sh dist/)"
+          echo "File count: $(find dist/ -type f | wc -l)"
+          
+          # Remove symlinks if any (GitHub Pages doesn't allow them)
+          SYMLINKS=$(find dist/ -type l | wc -l)
+          if [ $SYMLINKS -gt 0 ]; then
+            echo "⚠️ Found $SYMLINKS symlinks - removing them"
+            find dist/ -type l -delete
+          fi
+          
+          # Check for large files (>10MB)
+          LARGE_FILES=$(find dist/ -size +10M | wc -l)
+          if [ $LARGE_FILES -gt 0 ]; then
+            echo "⚠️ Found $LARGE_FILES files >10MB"
+            find dist/ -size +10M -ls
+          fi
+          
+          echo "✅ Build artifact verified and ready for deployment"
       
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
