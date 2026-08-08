@@ -67,17 +67,27 @@ jobs:
       
       - name: Run Lighthouse CI
         uses: treosh/lighthouse-ci-action@v10
+        id: lighthouse
+        continue-on-error: true
         with:
           urls: |
             https://hanbini96.github.io/HanBin-Baik-Blog/
             https://hanbini96.github.io/HanBin-Baik-Blog/blog
             https://hanbini96.github.io/HanBin-Baik-Blog/about
-          uploadArtifacts: true
+          uploadArtifacts: false
           temporaryPublicStorage: true
           configPath: ./lighthouserc.js
-        env:
-          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
-          LHCI_TOKEN: ${{ secrets.LHCI_TOKEN }}
+
+      - name: Upload Lighthouse results as artifact
+        uses: actions/upload-artifact@v4
+        if: always() && steps.lighthouse.outcome == 'success'
+        with:
+          name: lighthouse-results-${{ github.sha }}
+          path: |
+            .lighthouseci
+            lighthouse-*.html
+            lighthouse-*.json
+          retention-days: 7
 
   performance-benchmark:
     name: Collect Performance Metrics
