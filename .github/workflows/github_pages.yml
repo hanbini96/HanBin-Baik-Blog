@@ -1,6 +1,7 @@
 name: Deploy to GitHub Pages
 on:
-  push: { branches: [ main ] }
+  push:
+    branches: [ main ]
   workflow_dispatch: {}
   schedule:
     - cron: '*/30 * * * *'  # Run every 30 minutes for health checks
@@ -21,6 +22,8 @@ jobs:
       BUILD_TIMESTAMP: ${{ github.event.repository.updated_at }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
@@ -31,15 +34,35 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
           cache: 'pnpm'
 
       - name: Install dependencies
         run: pnpm install
 
-      - uses: withastro/action@v3
+      - name: Update browser compatibility data
+        run: |
+          echo "Updating browser compatibility data..."
+          npx update-browserslist-db@latest || echo "Warning: browserslist update failed, continuing..."
+          pnpm add -D baseline-browser-mapping@latest || echo "Warning: baseline-browser-mapping install failed, continuing..."
+          echo "Browser data update completed"
+
+      - name: Build Astro site
+        run: pnpm build
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+
+      - name: Verify build output
+        run: |
+          echo "Build completed successfully"
+          ls -lh dist/ | head -20
+      
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
         with:
-          path: .
+          name: github-pages
+          path: dist/
+          retention-days: 1
 
   deploy:
     needs: build

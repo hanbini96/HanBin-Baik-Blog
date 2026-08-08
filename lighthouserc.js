@@ -12,8 +12,6 @@ module.exports = {
       settings: {
         chromeFlags: '--no-sandbox --headless --disable-gpu',
         onlyCategories: ['performance', 'accessibility', 'best-practices', 'seo'],
-        formFactor: 'desktop',
-        screenEmulatedFormFactor: false,
         throttling: {
           rttMs: 40,
           throughputKbps: 10240,
@@ -29,6 +27,9 @@ module.exports = {
       
       // Number of runs per URL
       numberOfRuns: 3,
+      
+      // Form factor for testing (desktop or mobile)
+      formFactor: 'desktop',
       
       // Start server for static files (Astro builds to dist)
       startServerCommand: 'npx serve dist --no-clipboard --listen ${PORT}',

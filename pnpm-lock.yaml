@@ -37,16 +37,19 @@ importers:
         specifier: ^6.0.2
         version: 6.0.2(astro@5.18.0(@types/node@24.10.1)(jiti@1.21.7)(rollup@4.53.3)(typescript@5.9.3)(yaml@2.8.1))(tailwindcss@3.4.18(yaml@2.8.1))
       '@tailwindcss/typography':
-        specifier: ^0.5.13
+        specifier: ^0.5.19
         version: 0.5.19(tailwindcss@3.4.18(yaml@2.8.1))
       autoprefixer:
-        specifier: ^10.4.16
+        specifier: ^10.4.22
         version: 10.4.22(postcss@8.5.6)
+      baseline-browser-mapping:
+        specifier: ^2.8.1
+        version: 2.11.12
       postcss:
         specifier: ^8.4.25
         version: 8.5.6
       tailwindcss:
-        specifier: ^3.4.0
+        specifier: ^3.4.18
         version: 3.4.18(yaml@2.8.1)
 
 packages:
@@ -959,8 +962,9 @@ packages:
   base-64@1.0.0:
     resolution: {integrity: sha512-kwDPIFCGx0NZHog36dj+tHiwP4QMzsZ3AgMViUBKI0+V5n4U0ufTCUMhnQ04diaRI8EX/QcPfql7zlhZ7j4zgg==}
 
-  baseline-browser-mapping@2.8.29:
-    resolution: {integrity: sha512-sXdt2elaVnhpDNRDz+1BDx1JQoJRuNk7oVlAlbGiFkLikHCAQiccexF/9e91zVi6RCgqspl04aP+6Cnl9zRLrA==}
+  baseline-browser-mapping@2.11.12:
+    resolution: {integrity: sha512-r7WnVImvVCeFpf2DOXfy41aPWzeNg3H/A2X4dKmy1QL0MSyyk/e7z8ihJ3N6Nn2PsdhkVlqnEfnUE4a05P2aTA==}
+    engines: {node: '>=6.0.0'}
     hasBin: true
 
   binary-extensions@2.3.0:
@@ -3126,7 +3130,7 @@ snapshots:
 
   base-64@1.0.0: {}
 
-  baseline-browser-mapping@2.8.29: {}
+  baseline-browser-mapping@2.11.12: {}
 
   binary-extensions@2.3.0: {}
 
@@ -3149,7 +3153,7 @@ snapshots:
 
   browserslist@4.28.0:
     dependencies:
-      baseline-browser-mapping: 2.8.29
+      baseline-browser-mapping: 2.11.12
       caniuse-lite: 1.0.30001756
       electron-to-chromium: 1.5.257
       node-releases: 2.0.27
