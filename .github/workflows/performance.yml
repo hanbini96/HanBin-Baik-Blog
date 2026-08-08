@@ -40,10 +40,19 @@ jobs:
         run: pnpm install
 
       - name: Setup pnpm global bin directory
-        run: pnpm setup
+        run: |
+          # Setup pnpm global bin directory using pnpm's default configuration
+          pnpm setup
+          
+          # Get the actual global bin directory path from pnpm config
+          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || echo "$HOME/.pnpm-global/bin")
+          echo "PNPM_GLOBAL_BIN=$PNPM_GLOBAL_BIN" >> $GITHUB_ENV
+          echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
+          mkdir -p "$PNPM_GLOBAL_BIN"
+          echo "Configured pnpm global bin directory: $PNPM_GLOBAL_BIN"
       
       - name: Install global dependencies
-        run: pnpm install -g lighthouse @lhci/cli
+        run: pnpm add -g lighthouse @lhci/cli
       
       - name: Build Astro site
         run: pnpm build
@@ -87,10 +96,19 @@ jobs:
         run: pnpm install
 
       - name: Setup pnpm global bin directory
-        run: pnpm setup
+        run: |
+          # Setup pnpm global bin directory using pnpm's default configuration
+          pnpm setup
+          
+          # Get the actual global bin directory path from pnpm config
+          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || echo "$HOME/.pnpm-global/bin")
+          echo "PNPM_GLOBAL_BIN=$PNPM_GLOBAL_BIN" >> $GITHUB_ENV
+          echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
+          mkdir -p "$PNPM_GLOBAL_BIN"
+          echo "Configured pnpm global bin directory: $PNPM_GLOBAL_BIN"
       
       - name: Install global dependencies
-        run: pnpm install -g lighthouse
+        run: pnpm add -g lighthouse
       
       - name: Download Lighthouse reports
         uses: actions/download-artifact@v4
