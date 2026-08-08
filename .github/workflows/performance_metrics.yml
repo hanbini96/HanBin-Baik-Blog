@@ -1,122 +1,33 @@
-name: Performance Monitoring & Benchmarking
+name: Performance Metrics Collection
 
-# Trigger on pushes to main, PRs, weekly schedule, and manual trigger
+# Collect and store performance metrics without LHCI dependencies
+# This provides stable reports that can be used for future benchmarking
 on:
   push:
-    branches: [ main ]
+    branches: [ main, dev-update ]
   pull_request:
     branches: [ main ]
   schedule:
     - cron: '0 2 * * 1'  # Every Monday at 2 AM UTC
   workflow_dispatch: {}
-  
-env:
-  LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
-  LHCI_TOKEN: ${{ secrets.LHCI_TOKEN }}
 
 permissions:
   contents: write
   pull-requests: write
   issues: write
-  pages: read
 
 jobs:
-  lighthouse:
-    name: Run Lighthouse Audits
+  collect-metrics:
+    name: Collect Performance Metrics
     runs-on: ubuntu-latest
     env:
       PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-      LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
-      LHCI_TOKEN: ${{ secrets.LHCI_TOKEN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Fetch full history for comparison
-      
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.22.0
-          run_install: false
-      
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'pnpm'
-      
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Update browser compatibility data
-        run: |
-          echo "Updating browser compatibility data..."
-          npx update-browserslist-db@latest || echo "Warning: browserslist update failed, continuing..."
-          pnpm add -D baseline-browser-mapping@latest || echo "Warning: baseline-browser-mapping install failed, continuing..."
-          echo "Browser data update completed"
-
-      - name: Setup pnpm global bin directory
-        run: |
-          # Setup pnpm global bin directory using pnpm's default configuration
-          pnpm setup
-          
-          # Get the actual global bin directory path from pnpm config
-          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || echo "$HOME/.pnpm-global/bin")
-          echo "PNPM_GLOBAL_BIN=$PNPM_GLOBAL_BIN" >> $GITHUB_ENV
-          echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
-          mkdir -p "$PNPM_GLOBAL_BIN"
-          echo "Configured pnpm global bin directory: $PNPM_GLOBAL_BIN"
-      
-      - name: Install global dependencies
-        run: |
-          # Install global dependencies using pnpm
-          pnpm add -g lighthouse @lhci/cli
-          
-          # Verify installations
-          lhci --version || echo "lhci not found"
-          lighthouse --version || echo "lighthouse not found"
-      
-      - name: Build Astro site
-        run: pnpm build
-      
-      - name: Run Lighthouse CI
-        uses: treosh/lighthouse-ci-action@v10
-        id: lighthouse
-        continue-on-error: true
-        with:
-          urls: |
-            https://hanbini96.github.io/HanBin-Baik-Blog/
-            https://hanbini96.github.io/HanBin-Baik-Blog/blog
-            https://hanbini96.github.io/HanBin-Baik-Blog/about
-          uploadArtifacts: false
-          temporaryPublicStorage: true
-          configPath: ./lighthouserc.js
-
-      - name: Upload Lighthouse results as artifact
-        uses: actions/upload-artifact@v4
-        if: always() && steps.lighthouse.outcome == 'success'
-        with:
-          name: lighthouse-results-${{ github.sha }}
-          path: |
-            .lighthouseci
-            lighthouse-*.html
-            lighthouse-*.json
-          retention-days: 7
-
-  performance-benchmark:
-    name: Collect Performance Metrics
-    needs: lighthouse
-    runs-on: ubuntu-latest
-    env:
-      PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Set up pnpm
@@ -130,20 +41,26 @@ jobs:
         with:
           node-version: 20
           cache: 'pnpm'
-
+      
       - name: Install dependencies
         run: pnpm install
-
+        env:
+          PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      
       - name: Update browser compatibility data
         run: |
           echo "Updating browser compatibility data..."
           npx update-browserslist-db@latest || echo "Warning: browserslist update failed, continuing..."
           pnpm add -D baseline-browser-mapping@latest || echo "Warning: baseline-browser-mapping install failed, continuing..."
           echo "Browser data update completed"
-
+        env:
+          PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      
       - name: Setup pnpm global bin directory
         run: |
-          # Setup pnpm global bin directory using pnpm's default configuration
+          # Setup pnpm global bin directory
           pnpm setup
           
           # Get the actual global bin directory path from pnpm config
@@ -152,9 +69,6 @@ jobs:
           echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
           mkdir -p "$PNPM_GLOBAL_BIN"
           echo "Configured pnpm global bin directory: $PNPM_GLOBAL_BIN"
-          
-      - name: Create performance history directory
-        run: mkdir -p .performance-history
       
       - name: Install global dependencies
         run: |
@@ -163,6 +77,19 @@ jobs:
           
           # Verify installation
           lighthouse --version || echo "lighthouse not found"
+        env:
+          PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      
+      - name: Build Astro site
+        run: pnpm build
+        env:
+          PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          NODE_OPTIONS: --max-old-space-size=4096
+      
+      - name: Create performance history directory
+        run: mkdir -p .performance-history
       
       - name: Create fallback Lighthouse reports if artifacts missing
         run: |
@@ -206,7 +133,7 @@ jobs:
           DATE=$(date +%Y-%m-%d)
           
           # Create metrics file
-          cat > .performance-history/perf-$TIMESTAMP.json << 'PERFDATA'
+          cat > .performance-history/perf-$TIMESTAMP.json << PERFDATA
           {
             "timestamp": "$TIMESTAMP",
             "date": "$DATE",
@@ -286,7 +213,7 @@ jobs:
               " "$report")
               
               # Add to metrics file
-              cat >> .performance-history/perf-$TIMESTAMP.json << 'METRICS'
+              cat >> .performance-history/perf-$TIMESTAMP.json << METRICS
               "metrics": {
                 "performanceScore": $PERF_SCORE,
                 "firstContentfulPaint": $FCP,
@@ -326,20 +253,10 @@ METRICS
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  performance-summary:
-    name: Generate Performance Summary
-    needs: performance-benchmark
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       
       - name: Generate performance summary
         run: |
-          echo "📊 Performance Monitoring Summary"
+          echo "📊 Performance Metrics Summary"
           echo "==============================="
           echo ""
           
@@ -357,27 +274,22 @@ METRICS
           echo ""
           
           echo "✅ Performance monitoring completed successfully"
-      
+
   performance-alerts:
     name: Performance Alerts
-    needs: performance-benchmark
+    needs: collect-metrics
     runs-on: ubuntu-latest
-    if: failure() && needs.performance-benchmark.result == 'failure'
+    if: failure() && needs.collect-metrics.result == 'failure'
     steps:
-      - name: Create performance history directory if missing
-        run: mkdir -p .performance-history
-      
-      - name: Performance regression detected
+      - name: Performance monitoring failed
         run: |
           echo "⚠️ ⚠️ ⚠️"
-          echo "Performance regression detected!"
+          echo "Performance monitoring failed!"
           echo ""
-          echo "Check the Lighthouse CI results:"
+          echo "Check the workflow run for details:"
           echo "https://github.com/hanbini96/HanBin-Baik-Blog/actions"
           echo ""
           echo "Recent performance metrics:"
           ls -lt .performance-history/ | head -3 | awk '{print "  - " $9}'
-          echo ""
-          echo "Please review the performance reports and address any regressions."
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
