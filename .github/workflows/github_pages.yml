@@ -32,6 +32,9 @@ jobs:
           corepack enable
           corepack prepare pnpm@10.22.0 --activate
 
+      - name: Setup pnpm global bin directory
+        run: pnpm setup
+
       - name: Install dependencies
         run: pnpm install
 
