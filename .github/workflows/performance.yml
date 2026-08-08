@@ -29,13 +29,7 @@ jobs:
         with:
           fetch-depth: 0  # Fetch full history for comparison
       
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: 'pnpm'
-      
-      - name: Install pnpm
+      - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 10.22.0
@@ -44,9 +38,9 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: 'pnpm'
-
+      
       - name: Install dependencies
         run: pnpm install
 
@@ -70,9 +64,6 @@ jobs:
           # Verify installations
           lhci --version || echo "lhci not found"
           lighthouse --version || echo "lighthouse not found"
-      
-      - name: Build Astro site
-        run: pnpm build
       
       - name: Build Astro site
         run: pnpm build
@@ -105,13 +96,7 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: 'pnpm'
-      
-      - name: Install pnpm
+      - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 10.22.0
@@ -120,9 +105,9 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: 'pnpm'
-
+      
       - name: Install dependencies
         run: pnpm install
 
