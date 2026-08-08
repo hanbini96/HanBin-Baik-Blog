@@ -112,7 +112,11 @@ module.exports = {
       target: 'temporary-public-storage',
       
       // Keep reports for 30 days
-      cleanup: true
+      cleanup: true,
+      
+      // Ensure artifacts are uploaded even if assertions fail
+      uploadArtifacts: true,
+      artifactName: 'lighthouse-results'
     },
     
     // GitHub integration

@@ -36,6 +36,39 @@ This document describes the implementation of **Issue #5: Performance Monitoring
 
 ---
 
+## ⚙️ Lighthouse CI Setup & Configuration
+
+### Required Secrets Setup
+
+To use Lighthouse CI with GitHub Actions, you need to set up the following secrets in your repository:
+
+#### GitHub Secrets Required:
+
+1. **`LHCI_GITHUB_APP_TOKEN`** - GitHub App token for Lighthouse CI
+2. **`LHCI_TOKEN`** - (Optional) Lighthouse CI project token
+
+#### Setup Instructions:
+
+See **`LIGHTHOUSE_SETUP.md`** for detailed step-by-step setup guide.
+
+### Lighthouse CI Configuration
+
+The workflow uses the following configuration:
+
+**File**: `lighthouserc.js`
+- Tests 3 main pages of the blog
+- Collects performance, accessibility, best-practices, and SEO metrics
+- Uses desktop emulation by default
+- Asserts against recommended thresholds
+
+**Workflow**: `.github/workflows/performance.yml`
+- Runs on push to main/dev-update branches
+- Runs on pull requests
+- Runs weekly on Mondays
+- Provides manual trigger option
+
+---
+
 ## 🔧 Technical Implementation
 
 ### 1. Performance Monitoring Endpoints
@@ -119,7 +152,7 @@ Enhanced GitHub Actions workflow with performance monitoring:
 
 ```yaml
 # .github/workflows/performance.yml
-name: Performance Monitoring
+name: Performance Monitoring & Benchmarking
 
 on:
   push: { branches: [ main, dev-update ] }
@@ -143,9 +176,12 @@ jobs:
             https://hanbini96.github.io/HanBin-Baik-Blog/blog
             https://hanbini96.github.io/HanBin-Baik-Blog/about
           uploadArtifacts: true
+          artifactName: "lighthouse-results"
           temporaryPublicStorage: true
+          configPath: ./lighthouserc.js
         env:
           LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+          LHCI_TOKEN: ${{ secrets.LHCI_TOKEN }}
 
   performance-benchmark:
     needs: lighthouse
