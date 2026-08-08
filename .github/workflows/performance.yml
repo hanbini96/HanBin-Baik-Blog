@@ -26,26 +26,17 @@ jobs:
         with:
           fetch-depth: 0  # Fetch full history for comparison
       
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.22.0
+          run_install: false
+      
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'pnpm'
-      
-      - name: Ensure pnpm is default package manager
-        run: |
-          # Set pnpm as the default package manager
-          npm config set package-manager pnpm
-          npm config set package-manager-version 10.22.0
-      
-      - name: Enable Corepack and install pnpm
-        run: |
-          corepack enable
-          corepack prepare pnpm@10.22.0 --activate
-          
-          # Ensure pnpm is available in PATH
-          echo "PNPM_HOME=$(pnpm config get cache-dir)/pnpm-global" >> $GITHUB_ENV
-          echo "$PNPM_HOME/bin" >> $GITHUB_PATH
 
       - name: Install dependencies
         run: pnpm install
@@ -99,26 +90,17 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
       
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.22.0
+          run_install: false
+      
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'pnpm'
-      
-      - name: Ensure pnpm is default package manager
-        run: |
-          # Set pnpm as the default package manager
-          npm config set package-manager pnpm
-          npm config set package-manager-version 10.22.0
-      
-      - name: Enable Corepack and install pnpm
-        run: |
-          corepack enable
-          corepack prepare pnpm@10.22.0 --activate
-          
-          # Ensure pnpm is available in PATH
-          echo "PNPM_HOME=$(pnpm config get cache-dir)/pnpm-global" >> $GITHUB_ENV
-          echo "$PNPM_HOME/bin" >> $GITHUB_PATH
 
       - name: Install dependencies
         run: pnpm install
