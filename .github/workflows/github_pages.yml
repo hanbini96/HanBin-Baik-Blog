@@ -1,6 +1,7 @@
 name: Deploy to GitHub Pages
 on:
-  push: { branches: [ main ] }
+  push:
+    branches: [ main, dev-update ]
   workflow_dispatch: {}
   schedule:
     - cron: '*/30 * * * *'  # Run every 30 minutes for health checks
@@ -41,8 +42,10 @@ jobs:
 
       - name: Update browser compatibility data
         run: |
-          npx update-browserslist-db@latest
-          pnpm add -D baseline-browser-mapping@latest
+          echo "Updating browser compatibility data..."
+          npx update-browserslist-db@latest || echo "Warning: browserslist update failed, continuing..."
+          pnpm add -D baseline-browser-mapping@latest || echo "Warning: baseline-browser-mapping install failed, continuing..."
+          echo "Browser data update completed"
 
       - name: Build Astro site
         run: pnpm build
