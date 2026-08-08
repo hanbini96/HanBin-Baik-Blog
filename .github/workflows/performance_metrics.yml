@@ -20,6 +20,7 @@ permissions:
   pull-requests: write
   issues: write
   pages: read
+  checks: write
 
 jobs:
   lighthouse:
@@ -97,19 +98,21 @@ jobs:
             https://hanbini96.github.io/HanBin-Baik-Blog/
             https://hanbini96.github.io/HanBin-Baik-Blog/blog
             https://hanbini96.github.io/HanBin-Baik-Blog/about
-          uploadArtifacts: false
+          uploadArtifacts: true
+          artifactName: "lighthouse-results"
           temporaryPublicStorage: true
           configPath: ./lighthouserc.js
 
       - name: Upload Lighthouse results as artifact
         uses: actions/upload-artifact@v4
-        if: always() && steps.lighthouse.outcome == 'success'
+        if: always()
         with:
           name: lighthouse-results-${{ github.sha }}
           path: |
             .lighthouseci
             lighthouse-*.html
             lighthouse-*.json
+            .lighthouseci/manifest.json
           retention-days: 7
 
   performance-benchmark:
@@ -119,12 +122,14 @@ jobs:
     env:
       PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+      LHCI_TOKEN: ${{ secrets.LHCI_TOKEN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN || 'default_token' }}
       
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
@@ -369,22 +374,38 @@ METRICS
     name: Performance Alerts
     needs: performance-benchmark
     runs-on: ubuntu-latest
-    if: failure() && needs.performance-benchmark.result == 'failure'
+    if: always() && needs.performance-benchmark.result == 'failure'
     steps:
       - name: Create performance history directory if missing
         run: mkdir -p .performance-history
       
-      - name: Performance regression detected
+      - name: Performance monitoring status check
         run: |
-          echo "⚠️ ⚠️ ⚠️"
-          echo "Performance regression detected!"
+          echo "📊 Performance Monitoring Status Check"
+          echo "======================================"
           echo ""
-          echo "Check the Lighthouse CI results:"
-          echo "https://github.com/hanbini96/HanBin-Baik-Blog/actions"
-          echo ""
-          echo "Recent performance metrics:"
-          ls -lt .performance-history/ | head -3 | awk '{print "  - " $9}'
-          echo ""
-          echo "Please review the performance reports and address any regressions."
+          
+          if [ "${{ needs.performance-benchmark.result }}" = "failure" ]; then
+            echo "⚠️ Performance benchmark job failed"
+            echo ""
+            echo "Possible causes:"
+            echo "- Lighthouse CI configuration issues"
+            echo "- Missing secrets (LHCI_GITHUB_APP_TOKEN, LHCI_TOKEN)"
+            echo "- Network connectivity issues"
+            echo "- Site build failures"
+            echo ""
+            echo "Actions to take:"
+            echo "1. Check workflow logs for specific errors"
+            echo "2. Verify secrets are configured in GitHub"
+            echo "3. Test site build locally: pnpm build"
+            echo "4. Review Lighthouse configuration: lighthouserc.js"
+            echo ""
+            echo "Workflow URL: https://github.com/hanbini96/HanBin-Baik-Blog/actions"
+          else
+            echo "✅ Performance benchmark completed successfully"
+            echo ""
+            echo "Recent performance metrics:"
+            ls -lt .performance-history/ | head -3 | awk '{print "  - " $9}'
+          fi
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN || 'default_token' }}
