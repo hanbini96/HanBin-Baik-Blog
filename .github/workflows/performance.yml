@@ -1,11 +1,11 @@
 name: Performance Monitoring & Benchmarking
 
-# Trigger on pushes to main/dev-update, PRs, weekly schedule, and manual trigger
+# Trigger on pushes to main, PRs, weekly schedule, and manual trigger
 on:
   push:
-    branches: [ main, dev-update ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, dev-update ]
+    branches: [ main ]
   schedule:
     - cron: '0 2 * * 1'  # Every Monday at 2 AM UTC
   workflow_dispatch: {}
@@ -44,7 +44,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
           cache: 'pnpm'
       
       - name: Install dependencies
@@ -128,7 +128,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
           cache: 'pnpm'
 
       - name: Install dependencies
