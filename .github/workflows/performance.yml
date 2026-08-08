@@ -286,7 +286,7 @@ jobs:
               " "$report")
               
               # Add to metrics file
-              cat >> .performance-history/perf-$TIMESTAMP.json << METRICS
+              cat >> .performance-history/perf-$TIMESTAMP.json << 'METRICS'
               "metrics": {
                 "performanceScore": $PERF_SCORE,
                 "firstContentfulPaint": $FCP,
@@ -295,8 +295,8 @@ jobs:
                 "firstInputDelay": $FID,
                 "totalBlockingTime": $TBT,
                 "reportUrl": "$report"
-              }
-              METRICS
+            }
+METRICS
             fi
           done
           
