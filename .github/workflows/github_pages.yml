@@ -26,14 +26,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: 'pnpm'
 
       - name: Enable Corepack and install pnpm
         run: |
           corepack enable
           corepack prepare pnpm@10.22.0 --activate
-
-      - name: Setup pnpm global bin directory
-        run: pnpm setup
+          
+          # Ensure pnpm is available in PATH
+          echo "PNPM_HOME=$(pnpm config get cache-dir)/pnpm-global" >> $GITHUB_ENV
+          echo "$PNPM_HOME/bin" >> $GITHUB_PATH
 
       - name: Install dependencies
         run: pnpm install

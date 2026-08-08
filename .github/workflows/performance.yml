@@ -30,11 +30,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: 'pnpm'
       
       - name: Enable Corepack and install pnpm
         run: |
           corepack enable
           corepack prepare pnpm@10.22.0 --activate
+          
+          # Ensure pnpm is available in PATH
+          echo "PNPM_HOME=$(pnpm config get cache-dir)/pnpm-global" >> $GITHUB_ENV
+          echo "$PNPM_HOME/bin" >> $GITHUB_PATH
 
       - name: Install dependencies
         run: pnpm install
@@ -52,7 +57,13 @@ jobs:
           echo "Configured pnpm global bin directory: $PNPM_GLOBAL_BIN"
       
       - name: Install global dependencies
-        run: pnpm add -g lighthouse @lhci/cli
+        run: |
+          # Install global dependencies using pnpm
+          pnpm add -g lighthouse @lhci/cli
+          
+          # Verify installations
+          lhci --version || echo "lhci not found"
+          lighthouse --version || echo "lighthouse not found"
       
       - name: Build Astro site
         run: pnpm build
@@ -86,11 +97,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: 'pnpm'
       
       - name: Enable Corepack and install pnpm
         run: |
           corepack enable
           corepack prepare pnpm@10.22.0 --activate
+          
+          # Ensure pnpm is available in PATH
+          echo "PNPM_HOME=$(pnpm config get cache-dir)/pnpm-global" >> $GITHUB_ENV
+          echo "$PNPM_HOME/bin" >> $GITHUB_PATH
 
       - name: Install dependencies
         run: pnpm install
@@ -106,9 +122,17 @@ jobs:
           echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
           mkdir -p "$PNPM_GLOBAL_BIN"
           echo "Configured pnpm global bin directory: $PNPM_GLOBAL_BIN"
+          
+      - name: Create performance history directory
+        run: mkdir -p .performance-history
       
       - name: Install global dependencies
-        run: pnpm add -g lighthouse
+        run: |
+          # Install global dependencies using pnpm
+          pnpm add -g lighthouse
+          
+          # Verify installation
+          lighthouse --version || echo "lighthouse not found"
       
       - name: Download Lighthouse reports
         uses: actions/download-artifact@v4
@@ -226,7 +250,7 @@ jobs:
           echo "Performance metrics collected and stored in .performance-history/perf-$TIMESTAMP.json"
           echo ""
           cat .performance-history/perf-$TIMESTAMP.json | jq '.metrics'
-        
+      
       - name: Commit performance metrics
         run: |
           # Configure git
@@ -260,7 +284,7 @@ jobs:
       - name: Generate performance summary
         run: |
           echo "📊 Performance Monitoring Summary"
-          echo "================================"
+          echo "==============================="
           echo ""
           
           # List recent performance files
@@ -277,13 +301,16 @@ jobs:
           echo ""
           
           echo "✅ Performance monitoring completed successfully"
-        
+      
   performance-alerts:
     name: Performance Alerts
     needs: performance-benchmark
     runs-on: ubuntu-latest
-    if: failure()
+    if: failure() && needs.performance-benchmark.result == 'failure'
     steps:
+      - name: Create performance history directory if missing
+        run: mkdir -p .performance-history
+      
       - name: Performance regression detected
         run: |
           echo "⚠️ ⚠️ ⚠️"
