@@ -30,8 +30,8 @@ module.exports = {
       // Number of runs per URL
       numberOfRuns: 3,
       
-      // Start server for static files
-      startServerCommand: 'npx serve public --no-clipboard --listen ${PORT}',
+      // Start server for static files (Astro builds to dist)
+      startServerCommand: 'npx serve dist --no-clipboard --listen ${PORT}',
       startServerReadyPattern: /Local:/,
       startServerReadyTimeout: 5000
     },
