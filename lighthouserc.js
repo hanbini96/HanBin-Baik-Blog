@@ -13,7 +13,7 @@ module.exports = {
         chromeFlags: '--no-sandbox --headless --disable-gpu',
         onlyCategories: ['performance', 'accessibility', 'best-practices', 'seo'],
         formFactor: 'desktop',
-        screenEmulatedFormFactor: false,
+        screenEmulatedFormFactor: false,  // Explicitly disable mobile emulation for desktop testing
         throttling: {
           rttMs: 40,
           throughputKbps: 10240,
