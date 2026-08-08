@@ -38,12 +38,17 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 22
           cache: 'pnpm'
       
       - name: Install dependencies
         run: pnpm install
 
+
+      - name: Update browser compatibility data
+        run: |
+          npx update-browserslist-db@latest
+          pnpm add -D baseline-browser-mapping@latest
       - name: Setup pnpm global bin directory
         run: |
           # Setup pnpm global bin directory using pnpm's default configuration
@@ -115,7 +120,12 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 22
+
+      - name: Update browser compatibility data
+        run: |
+          npx update-browserslist-db@latest
+          pnpm add -D baseline-browser-mapping@latest
           cache: 'pnpm'
       
       - name: Install dependencies

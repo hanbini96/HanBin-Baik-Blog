@@ -21,6 +21,8 @@ jobs:
       BUILD_TIMESTAMP: ${{ github.event.repository.updated_at }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
@@ -31,15 +33,26 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 22
           cache: 'pnpm'
 
       - name: Install dependencies
         run: pnpm install
 
-      - uses: withastro/action@v3
-        with:
-          path: .
+      - name: Update browser compatibility data
+        run: |
+          npx update-browserslist-db@latest
+          pnpm add -D baseline-browser-mapping@latest
+
+      - name: Build Astro site
+        run: pnpm build
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+
+      - name: Verify build output
+        run: |
+          echo "Build completed successfully"
+          ls -lh dist/ | head -20
 
   deploy:
     needs: build
