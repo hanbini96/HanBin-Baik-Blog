@@ -21,7 +21,7 @@ jobs:
       BUILD_TIMESTAMP: ${{ github.event.repository.updated_at }}
     steps:
       - uses: actions/checkout@v4
-      - uses: withastro/action@v2
+      - uses: withastro/action@v3
         with:
           path: .
           node-version: 20
