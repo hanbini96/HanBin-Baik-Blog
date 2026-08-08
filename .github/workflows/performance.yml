@@ -67,7 +67,6 @@ jobs:
       
       - name: Run Lighthouse CI
         uses: treosh/lighthouse-ci-action@v10
-        id: lighthouse
         with:
           urls: |
             https://hanbini96.github.io/HanBin-Baik-Blog/
@@ -120,18 +119,6 @@ jobs:
           
       - name: Create performance history directory
         run: mkdir -p .performance-history
-        
-      - name: Check if Lighthouse artifacts exist
-        id: check-artifacts
-        run: |
-          # Check if the artifact directory exists and has files
-          if [ -d "./lighthouse-reports" ] && [ "$(ls -A ./lighthouse-reports 2>/dev/null)" ]; then
-            echo "artifacts-exist=true" >> $GITHUB_OUTPUT
-            echo "✅ Lighthouse artifacts found"
-          else
-            echo "artifacts-exist=false" >> $GITHUB_OUTPUT
-            echo "⚠️ No Lighthouse artifacts found - using fallback metrics"
-          fi
       
       - name: Install global dependencies
         run: |
@@ -141,15 +128,7 @@ jobs:
           # Verify installation
           lighthouse --version || echo "lighthouse not found"
       
-      - name: Download Lighthouse reports
-        uses: actions/download-artifact@v4
-        with:
-          name: lighthouse-report
-          path: ./lighthouse-reports
-        continue-on-error: true
-        
       - name: Create fallback Lighthouse reports if artifacts missing
-        if: steps.check-artifacts.outputs.artifacts-exist == 'false'
         run: |
           echo "📝 Creating fallback Lighthouse reports for performance tracking..."
           

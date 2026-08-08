@@ -112,10 +112,7 @@ module.exports = {
       target: 'temporary-public-storage',
       
       // Keep reports for 30 days
-      cleanup: true,
-      
-      // Ensure artifacts are uploaded even if assertions fail
-      uploadArtifacts: true
+      cleanup: true
     },
     
     // GitHub integration
