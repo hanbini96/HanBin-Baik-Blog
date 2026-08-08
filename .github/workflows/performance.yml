@@ -39,6 +39,9 @@ jobs:
           run_install: false
       
       - name: Install dependencies
+        run: pnpm install
+
+      - name: Install global dependencies
         run: pnpm install -g lighthouse @lhci/cli
       
       - name: Run Lighthouse CI
@@ -78,7 +81,10 @@ jobs:
           version: 10
           run_install: false
       
-      - name: Install lighthouse
+      - name: Install dependencies
+        run: pnpm install
+      
+      - name: Install global dependencies
         run: pnpm install -g lighthouse
       
       - name: Download Lighthouse reports
