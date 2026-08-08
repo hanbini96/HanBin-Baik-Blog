@@ -11,5 +11,23 @@ export default defineConfig({
   site: 'https://hanbini96.github.io',
   base: "/HanBin-Baik-Blog/",
   output: 'static',
-  integrations: [react(), tailwind()]
+  markdown: {
+    shikiConfig: {
+      theme: 'github-dark'
+    }
+  },
+  integrations: [react(), tailwind()],
+  vite: {
+    build: {
+      rollupOptions: {
+        onwarn: (warning, defaultHandler) => {
+          // Suppress marked.js deprecation warnings
+          if (warning.code === 'PLUGIN_WARNING' && warning.message.includes('marked()')) {
+            return;
+          }
+          defaultHandler(warning);
+        }
+      }
+    }
+  }
 });
