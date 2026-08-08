@@ -24,6 +24,9 @@ Thumbs.db
 .idea/
 *.swp
 
+# === Pi Agent ===
+.pi/
+
 # === Logs and Reports ===
 npm-debug.log*
 yarn-debug.log*

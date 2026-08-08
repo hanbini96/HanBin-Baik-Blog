@@ -26,20 +26,44 @@ jobs:
         with:
           fetch-depth: 0  # Fetch full history for comparison
       
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.22.0
+          run_install: false
+      
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'pnpm'
-      
-      - name: Install pnpm
-        run: npm install -g pnpm
+
+      - name: Install dependencies
+        run: pnpm install
 
       - name: Setup pnpm global bin directory
-        run: pnpm setup
+        run: |
+          # Setup pnpm global bin directory using pnpm's default configuration
+          pnpm setup
+          
+          # Get the actual global bin directory path from pnpm config
+          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || echo "$HOME/.pnpm-global/bin")
+          echo "PNPM_GLOBAL_BIN=$PNPM_GLOBAL_BIN" >> $GITHUB_ENV
+          echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
+          mkdir -p "$PNPM_GLOBAL_BIN"
+          echo "Configured pnpm global bin directory: $PNPM_GLOBAL_BIN"
       
-      - name: Install dependencies
-        run: pnpm install -g lighthouse @lhci/cli
+      - name: Install global dependencies
+        run: |
+          # Install global dependencies using pnpm
+          pnpm add -g lighthouse @lhci/cli
+          
+          # Verify installations
+          lhci --version || echo "lhci not found"
+          lighthouse --version || echo "lighthouse not found"
+      
+      - name: Build Astro site
+        run: pnpm build
       
       - name: Run Lighthouse CI
         uses: treosh/lighthouse-ci-action@v10
@@ -66,20 +90,43 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
       
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.22.0
+          run_install: false
+      
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'pnpm'
-      
-      - name: Install pnpm
-        run: npm install -g pnpm
+
+      - name: Install dependencies
+        run: pnpm install
 
       - name: Setup pnpm global bin directory
-        run: pnpm setup
+        run: |
+          # Setup pnpm global bin directory using pnpm's default configuration
+          pnpm setup
+          
+          # Get the actual global bin directory path from pnpm config
+          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || echo "$HOME/.pnpm-global/bin")
+          echo "PNPM_GLOBAL_BIN=$PNPM_GLOBAL_BIN" >> $GITHUB_ENV
+          echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
+          mkdir -p "$PNPM_GLOBAL_BIN"
+          echo "Configured pnpm global bin directory: $PNPM_GLOBAL_BIN"
+          
+      - name: Create performance history directory
+        run: mkdir -p .performance-history
       
-      - name: Install lighthouse
-        run: pnpm install -g lighthouse
+      - name: Install global dependencies
+        run: |
+          # Install global dependencies using pnpm
+          pnpm add -g lighthouse
+          
+          # Verify installation
+          lighthouse --version || echo "lighthouse not found"
       
       - name: Download Lighthouse reports
         uses: actions/download-artifact@v4
@@ -197,7 +244,7 @@ jobs:
           echo "Performance metrics collected and stored in .performance-history/perf-$TIMESTAMP.json"
           echo ""
           cat .performance-history/perf-$TIMESTAMP.json | jq '.metrics'
-        
+      
       - name: Commit performance metrics
         run: |
           # Configure git
@@ -231,7 +278,7 @@ jobs:
       - name: Generate performance summary
         run: |
           echo "📊 Performance Monitoring Summary"
-          echo "================================"
+          echo "==============================="
           echo ""
           
           # List recent performance files
@@ -248,13 +295,16 @@ jobs:
           echo ""
           
           echo "✅ Performance monitoring completed successfully"
-        
+      
   performance-alerts:
     name: Performance Alerts
     needs: performance-benchmark
     runs-on: ubuntu-latest
-    if: failure()
+    if: failure() && needs.performance-benchmark.result == 'failure'
     steps:
+      - name: Create performance history directory if missing
+        run: mkdir -p .performance-history
+      
       - name: Performance regression detected
         run: |
           echo "⚠️ ⚠️ ⚠️"
