@@ -74,7 +74,6 @@ jobs:
             https://hanbini96.github.io/HanBin-Baik-Blog/blog
             https://hanbini96.github.io/HanBin-Baik-Blog/about
           uploadArtifacts: true
-          artifactName: "lighthouse-results"
           temporaryPublicStorage: true
           configPath: ./lighthouserc.js
         env:
@@ -145,7 +144,7 @@ jobs:
       - name: Download Lighthouse reports
         uses: actions/download-artifact@v4
         with:
-          name: lighthouse-results
+          name: lighthouse-report
           path: ./lighthouse-reports
         continue-on-error: true
         

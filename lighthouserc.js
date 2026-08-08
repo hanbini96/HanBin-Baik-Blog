@@ -115,8 +115,7 @@ module.exports = {
       cleanup: true,
       
       // Ensure artifacts are uploaded even if assertions fail
-      uploadArtifacts: true,
-      artifactName: 'lighthouse-results'
+      uploadArtifacts: true
     },
     
     // GitHub integration
