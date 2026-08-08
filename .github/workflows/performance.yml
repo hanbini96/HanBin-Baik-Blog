@@ -1,9 +1,10 @@
 name: Performance Monitoring & Benchmarking
 
-# Trigger on pushes to main, PRs, weekly schedule, and manual trigger
+# Trigger on pushes to main/dev-update, PRs, weekly schedule, and manual trigger
+# Performance monitoring runs on both main (production) and dev-update (development) branches
 on:
   push:
-    branches: [ main ]
+    branches: [ main, dev-update ]
   pull_request:
     branches: [ main ]
   schedule:
@@ -77,9 +78,15 @@ jobs:
           # Verify installations
           lhci --version || echo "lhci not found"
           lighthouse --version || echo "lighthouse not found"
+        env:
+          PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
       
       - name: Build Astro site
         run: pnpm build
+        env:
+          PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
       
       - name: Run Lighthouse CI
         uses: treosh/lighthouse-ci-action@v10
