@@ -39,11 +39,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Setup global pnpm bin directory
-        run: |
-          pnpm setup
-          echo "PNPM_HOME=$(pnpm config get global-bin-dir)" >> $GITHUB_ENV
-
       - name: Install global dependencies
         run: pnpm install -g lighthouse @lhci/cli
       
@@ -84,7 +79,6 @@ jobs:
         run: |
           corepack enable
           corepack prepare pnpm@10.22.0 --activate
-          pnpm setup
 
       - name: Install dependencies
         run: pnpm install

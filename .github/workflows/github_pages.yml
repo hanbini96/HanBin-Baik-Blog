@@ -26,13 +26,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'pnpm'
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-          run_install: false
+      - name: Enable Corepack and install pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.22.0 --activate
 
       - name: Install dependencies
         run: pnpm install
@@ -40,9 +38,6 @@ jobs:
       - uses: withastro/action@v3
         with:
           path: .
-          node-version: 22
-        env:
-          PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
 
   deploy:
     needs: build
