@@ -103,18 +103,18 @@ jobs:
     needs: lighthouse
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository with proper permissions
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 10.22.0
           run_install: false
-      
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
