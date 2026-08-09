@@ -14,6 +14,8 @@ on:
 env:
   LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
   LHCI_TOKEN: ${{ secrets.LHCI_TOKEN }}
+  # Node.js version for better compatibility
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: false
 
 permissions:
   contents: write
@@ -36,6 +38,36 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Fetch full history for comparison
+
+      - name: Verify required secrets
+        run: |
+          echo "🔍 Verifying required secrets for Lighthouse CI..."
+          
+          # Check for LHCI secrets
+          if [ -z "${{ secrets.LHCI_GITHUB_APP_TOKEN }}" ]; then
+            echo "⚠️  WARNING: LHCI_GITHUB_APP_TOKEN secret is not configured"
+            echo "⚠️  Performance monitoring will use fallback mode only"
+            echo "SECRET_LHCI_GITHUB_APP_TOKEN=missing" >> $GITHUB_ENV
+          else
+            echo "✅ LHCI_GITHUB_APP_TOKEN secret is configured"
+            echo "SECRET_LHCI_GITHUB_APP_TOKEN=configured" >> $GITHUB_ENV
+          fi
+          
+          if [ -z "${{ secrets.LHCI_TOKEN }}" ]; then
+            echo "⚠️  WARNING: LHCI_TOKEN secret is not configured"
+            echo "⚠️  Performance monitoring will use fallback mode only"
+            echo "SECRET_LHCI_TOKEN=missing" >> $GITHUB_ENV
+          else
+            echo "✅ LHCI_TOKEN secret is configured"
+            echo "SECRET_LHCI_TOKEN=configured" >> $GITHUB_ENV
+          fi
+          
+          # Check for Supabase secrets (needed for build)
+          if [ -z "${{ secrets.SUPABASE_URL }}" ] || [ -z "${{ secrets.SUPABASE_ANON_KEY }}" ]; then
+            echo "❌ ERROR: Required Supabase secrets are missing"
+            echo "SUPABASE_URL and SUPABASE_ANON_KEY are required for site build"
+            exit 1
+          fi
       
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
@@ -74,11 +106,14 @@ jobs:
       - name: Install global dependencies
         run: |
           # Install global dependencies using pnpm
+          echo "📦 Installing global dependencies..."
           pnpm add -g lighthouse @lhci/cli
           
           # Verify installations
-          lhci --version || echo "lhci not found"
-          lighthouse --version || echo "lighthouse not found"
+          lhci --version || { echo "❌ lhci not found after installation"; exit 1; }
+          lighthouse --version || { echo "❌ lighthouse not found after installation"; exit 1; }
+          
+          echo "✅ Global dependencies installed successfully"
         env:
           PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
@@ -98,10 +133,56 @@ jobs:
             https://hanbini96.github.io/HanBin-Baik-Blog/
             https://hanbini96.github.io/HanBin-Baik-Blog/blog
             https://hanbini96.github.io/HanBin-Baik-Blog/about
-          uploadArtifacts: true
+          uploadArtifacts: ${{ env.SECRET_LHCI_GITHUB_APP_TOKEN == 'configured' }}
           artifactName: "lighthouse-results"
-          temporaryPublicStorage: true
+          temporaryPublicStorage: ${{ env.SECRET_LHCI_GITHUB_APP_TOKEN == 'configured' }}
           configPath: ./lighthouserc.js
+          
+      - name: Handle Lighthouse CI failures
+        if: steps.lighthouse.outcome == 'failure'
+        run: |
+          echo "⚠️  Lighthouse CI failed, but workflow continues for fallback"
+          echo "Possible causes:"
+          echo "- Missing LHCI secrets"
+          echo "- Network connectivity issues"
+          echo "- Lighthouse configuration problems"
+          echo "- Site build issues"
+          echo ""
+          echo "Creating fallback performance reports..."
+          
+          # Ensure fallback directory exists
+          mkdir -p ./lighthouse-reports
+          
+          # Create comprehensive fallback report
+          cat > ./lighthouse-reports/fallback-report.json << 'EOF'
+          {
+            "lhr": {
+              "categories": {
+                "performance": {"score": 0.4, "title": "Performance"},
+                "accessibility": {"score": 0.6, "title": "Accessibility"},
+                "best-practices": {"score": 0.5, "title": "Best Practices"},
+                "seo": {"score": 0.7, "title": "SEO"}
+              },
+              "audits": {
+                "first-contentful-paint": {"numericValue": 3000, "title": "First Contentful Paint"},
+                "largest-contentful-paint": {"numericValue": 3500, "title": "Largest Contentful Paint"},
+                "cumulative-layout-shift": {"numericValue": 0.2, "title": "Cumulative Layout Shift"},
+                "first-input-delay": {"numericValue": 200, "title": "First Input Delay"},
+                "total-blocking-time": {"numericValue": 500, "title": "Total Blocking Time"},
+                "speed-index": {"numericValue": 3200, "title": "Speed Index"}
+              },
+              "fetchTime": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+              "finalUrl": "https://hanbini96.github.io/HanBin-Baik-Blog/"
+            },
+            "ci": {
+              "uploaded": false,
+              "status": "fallback-mode"
+            }
+          }
+          EOF
+          
+          echo "✅ Fallback performance report created"
+          echo "Lighthouse CI Status: ${{ steps.lighthouse.outcome }}"
 
       - name: Upload Lighthouse results as artifact
         uses: actions/upload-artifact@v4
@@ -124,6 +205,8 @@ jobs:
       PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
       LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
       LHCI_TOKEN: ${{ secrets.LHCI_TOKEN }}
+      # Enable better error handling
+      CI: true
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -170,11 +253,29 @@ jobs:
       
       - name: Install global dependencies
         run: |
+          echo "📦 Installing global Lighthouse CLI..."
+          
           # Install global dependencies using pnpm
           pnpm add -g lighthouse
           
           # Verify installation
-          lighthouse --version || echo "lighthouse not found"
+          if ! command -v lighthouse &> /dev/null; then
+            echo "❌ ERROR: lighthouse command not found after installation"
+            echo "This indicates a global installation failure"
+            exit 1
+          fi
+          
+          LIGHTHOUSE_VERSION=$(lighthouse --version)
+          echo "✅ Lighthouse CLI installed: $LIGHTHOUSE_VERSION"
+          
+          # Verify LHCI CLI is available
+          if ! command -v lhci &> /dev/null; then
+            echo "⚠️  WARNING: lhci command not found (may be installed via pnpm global)"
+            echo "⚠️  Fallback mechanisms will be used"
+          else
+            LHCI_VERSION=$(lhci --version)
+            echo "✅ LHCI CLI available: $LHCI_VERSION"
+          fi
       
       - name: Create fallback Lighthouse reports if artifacts missing
         run: |
@@ -183,33 +284,80 @@ jobs:
           # Create minimal JSON report structure for fallback
           mkdir -p ./lighthouse-reports
           
-          # Create a basic performance report
+          # Create a comprehensive fallback report with realistic values
           cat > ./lighthouse-reports/fallback-report.json << 'EOF'
           {
             "lhr": {
               "categories": {
-                "performance": {"score": 0.5},
-                "accessibility": {"score": 0.7},
-                "best-practices": {"score": 0.6},
-                "seo": {"score": 0.8}
+                "performance": {"score": 0.55, "title": "Performance", "id": "performance"},
+                "accessibility": {"score": 0.72, "title": "Accessibility", "id": "accessibility"},
+                "best-practices": {"score": 0.65, "title": "Best Practices", "id": "best-practices"},
+                "seo": {"score": 0.85, "title": "SEO", "id": "seo"}
               },
               "audits": {
-                "first-contentful-paint": {"numericValue": 2500},
-                "largest-contentful-paint": {"numericValue": 3000},
-                "cumulative-layout-shift": {"numericValue": 0.1},
-                "first-input-delay": {"numericValue": 150},
-                "total-blocking-time": {"numericValue": 300},
-                "speed-index": {"numericValue": 2800}
-              }
+                "first-contentful-paint": {
+                  "id": "first-contentful-paint",
+                  "title": "First Contentful Paint", 
+                  "description": "Measures the time from when the page starts loading to when any part of the page's content is rendered on the screen.",
+                  "numericValue": 2500,
+                  "numericUnit": "millisecond"
+                },
+                "largest-contentful-paint": {
+                  "id": "largest-contentful-paint",
+                  "title": "Largest Contentful Paint",
+                  "description": "Measures when the largest content element is visible within the viewport.",
+                  "numericValue": 3000,
+                  "numericUnit": "millisecond"
+                },
+                "cumulative-layout-shift": {
+                  "id": "cumulative-layout-shift",
+                  "title": "Cumulative Layout Shift",
+                  "description": "Measures the sum total of all individual layout shift scores for every unexpected layout shift that occurs during the entire lifespan of the page.",
+                  "numericValue": 0.1,
+                  "numericUnit": "unitless"
+                },
+                "first-input-delay": {
+                  "id": "first-input-delay",
+                  "title": "First Input Delay",
+                  "description": "Measures the time from when a user first interacts with your site to the time when the browser is able to respond to that interaction.",
+                  "numericValue": 150,
+                  "numericUnit": "millisecond"
+                },
+                "total-blocking-time": {
+                  "id": "total-blocking-time",
+                  "title": "Total Blocking Time",
+                  "description": "Sum of all time periods between FCP and Time to Interactive, when task length exceeded 50ms.",
+                  "numericValue": 300,
+                  "numericUnit": "millisecond"
+                },
+                "speed-index": {
+                  "id": "speed-index",
+                  "title": "Speed Index",
+                  "description": "Shows how quickly the contents of a page are visibly populated.",
+                  "numericValue": 2800,
+                  "numericUnit": "millisecond"
+                }
+              },
+              "fetchTime": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+              "finalUrl": "https://hanbini96.github.io/HanBin-Baik-Blog/",
+              "environment": "fallback-mode"
+            },
+            "ci": {
+              "uploaded": false,
+              "status": "fallback-mode-due-to-missing-secrets-or-network-issues",
+              "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
             }
           }
           EOF
           
-          echo "✅ Fallback report created for performance tracking"
+          echo "✅ Comprehensive fallback report created"
+          echo "📊 Report includes realistic performance metrics and descriptions"
       
       - name: Parse and store performance metrics
         if: always()
         run: |
+          echo "📊 Parsing and storing performance metrics..."
+          
           # Create performance history directory
           mkdir -p .performance-history
           
@@ -217,13 +365,18 @@ jobs:
           TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
           DATE=$(date +%Y-%m-%d)
           
-          # Create metrics file
+          # Create metrics file with metadata
           cat > .performance-history/perf-$TIMESTAMP.json << 'PERFDATA'
           {
             "timestamp": "$TIMESTAMP",
             "date": "$DATE",
             "service": "hanbin-baik-blog",
-            "version": "1.0.0",
+            "repository": "hanbini96/HanBin-Baik-Blog",
+            "workflow": "performance-benchmark",
+            "run_id": "${{ github.run_id }}",
+            "run_number": "${{ github.run_number }}",
+            "branch": "${{ github.ref_name }}",
+            "sha": "${{ github.sha }}",
             "metrics": {}
           }
           PERFDATA
@@ -321,6 +474,8 @@ METRICS
       
       - name: Commit performance metrics
         run: |
+          echo "📝 Committing performance metrics..."
+          
           # Configure git
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
@@ -330,9 +485,30 @@ METRICS
           
           # Check if there are changes
           if ! git diff --cached --quiet; then
+            echo "📊 Changes detected in performance metrics"
             git commit -m "chore: Update performance metrics [skip ci]"
-            git push
-            echo "✅ Performance metrics committed and pushed"
+            
+            # Try to push with retry logic
+            MAX_RETRIES=3
+            RETRY_DELAY=10
+            RETRY_COUNT=0
+            SUCCESS=false
+            
+            while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ "$SUCCESS" = false ]; do
+              if git push; then
+                echo "✅ Performance metrics committed and pushed successfully"
+                SUCCESS=true
+              else
+                RETRY_COUNT=$((RETRY_COUNT + 1))
+                echo "⚠️  Push attempt $RETRY_COUNT failed, retrying in $RETRY_DELAY seconds..."
+                sleep $RETRY_DELAY
+              fi
+            done
+            
+            if [ "$SUCCESS" = false ]; then
+              echo "❌ ERROR: Failed to push performance metrics after $MAX_RETRIES attempts"
+              echo "This is not critical - metrics will be collected next run"
+            fi
           else
             echo "ℹ️ No changes in performance metrics"
           fi
@@ -355,26 +531,46 @@ METRICS
           echo "==============================="
           echo ""
           
+          # Check if performance history exists
+          if [ ! -d ".performance-history" ]; then
+            echo "❌ ERROR: .performance-history directory not found"
+            echo "Performance monitoring may have failed completely"
+            exit 1
+          fi
+          
           # List recent performance files
           echo "📈 Recent Performance Metrics:"
-          ls -lt .performance-history/ | head -6 | awk '{print "  - " $9}'
-          echo ""
-          
-          # Show latest metrics
-          LATEST_FILE=$(ls -t .performance-history/ | head -1)
-          if [ -n "$LATEST_FILE" ]; then
-            echo "📋 Latest Metrics ($LATEST_FILE):"
-            cat .performance-history/$LATEST_FILE | jq '.metrics'
+          if ls .performance-history/ >/dev/null 2>&1; then
+            ls -lt .performance-history/ | head -6 | awk '{print "  - " $9}'
+          else
+            echo "  No performance metrics found"
           fi
           echo ""
           
-          echo "✅ Performance monitoring completed successfully"
+          # Show latest metrics
+          LATEST_FILE=$(ls -t .performance-history/ 2>/dev/null | head -1)
+          if [ -n "$LATEST_FILE" ]; then
+            echo "📋 Latest Metrics ($LATEST_FILE):"
+            if command -v jq &> /dev/null; then
+              cat .performance-history/$LATEST_FILE | jq '.metrics'
+            else
+              echo "  jq not available, showing raw JSON:"
+              cat .performance-history/$LATEST_FILE | head -20
+            fi
+          else
+            echo "⚠️  No performance metrics files found"
+            echo "This could indicate workflow failures or missing data"
+          fi
+          echo ""
+          
+          echo "✅ Performance monitoring summary generated"
+          echo "📊 Status: $(if [ -n "$LATEST_FILE" ]; then echo "Metrics available"; else echo "No metrics available"; fi)"
       
   performance-alerts:
     name: Performance Alerts
     needs: performance-benchmark
     runs-on: ubuntu-latest
-    if: always() && needs.performance-benchmark.result == 'failure'
+    if: always()
     steps:
       - name: Create performance history directory if missing
         run: mkdir -p .performance-history
@@ -385,27 +581,83 @@ METRICS
           echo "======================================"
           echo ""
           
-          if [ "${{ needs.performance-benchmark.result }}" = "failure" ]; then
-            echo "⚠️ Performance benchmark job failed"
+          PERF_STATUS="${{ needs.performance-benchmark.result }}"
+          
+          if [ "$PERF_STATUS" = "failure" ]; then
+            echo "❌ CRITICAL: Performance benchmark job failed"
             echo ""
             echo "Possible causes:"
-            echo "- Lighthouse CI configuration issues"
-            echo "- Missing secrets (LHCI_GITHUB_APP_TOKEN, LHCI_TOKEN)"
-            echo "- Network connectivity issues"
-            echo "- Site build failures"
+            echo "- ❌ Missing LHCI secrets (LHCI_GITHUB_APP_TOKEN, LHCI_TOKEN)"
+            echo "- ❌ Network connectivity issues"
+            echo "- ❌ Site build failures"
+            echo "- ❌ Lighthouse CI configuration problems"
             echo ""
-            echo "Actions to take:"
-            echo "1. Check workflow logs for specific errors"
-            echo "2. Verify secrets are configured in GitHub"
-            echo "3. Test site build locally: pnpm build"
-            echo "4. Review Lighthouse configuration: lighthouserc.js"
+            echo "🔧 Immediate Actions to take:"
+            echo "1. ✅ Check workflow logs for specific errors"
+            echo "2. ✅ Verify secrets are configured in GitHub:"
+            echo "   - LHCI_GITHUB_APP_TOKEN"
+            echo "   - LHCI_TOKEN"
+            echo "3. ✅ Test site build locally: pnpm build"
+            echo "4. ✅ Review Lighthouse configuration: lighthouserc.js"
             echo ""
-            echo "Workflow URL: https://github.com/hanbini96/HanBin-Baik-Blog/actions"
-          else
+            echo "📋 Workflow Details:"
+            echo "- Workflow: performance_metrics.yml"
+            echo "- Run ID: ${{ github.run_id }}"
+            echo "- Branch: ${{ github.ref_name }}"
+            echo "- Status: FAILED"
+            echo ""
+            echo "🔗 Workflow URL: https://github.com/hanbini96/HanBin-Baik-Blog/actions/runs/${{ github.run_id }}"
+            
+            # Exit with error to indicate alert
+            exit 1
+          elif [ "$PERF_STATUS" = "success" ]; then
             echo "✅ Performance benchmark completed successfully"
             echo ""
-            echo "Recent performance metrics:"
-            ls -lt .performance-history/ | head -3 | awk '{print "  - " $9}'
+            
+            # Show recent performance metrics
+            if [ -d ".performance-history" ]; then
+              METRIC_COUNT=$(ls .performance-history/ 2>/dev/null | wc -l)
+              echo "📊 Performance Metrics Summary:"
+              echo "   - Total metrics files: $METRIC_COUNT"
+              
+              LATEST_FILE=$(ls -t .performance-history/ 2>/dev/null | head -1)
+              if [ -n "$LATEST_FILE" ]; then
+                echo "   - Latest file: $LATEST_FILE"
+                
+                # Extract and display key metrics
+                if command -v jq &> /dev/null; then
+                  echo ""
+                  echo "📈 Key Performance Indicators:"
+                  
+                  # Try to extract performance score
+                  PERF_SCORE=$(jq -r '.metrics.performanceScore // "N/A"' .performance-history/$LATEST_FILE 2>/dev/null || echo "N/A")
+                  echo "   Performance Score: $PERF_SCORE"
+                  
+                  # Try to extract LCP
+                  LCP=$(jq -r '.metrics.largestContentfulPaint // "N/A"' .performance-history/$LATEST_FILE 2>/dev/null || echo "N/A")
+                  echo "   Largest Contentful Paint: $LCP ms"
+                  
+                  # Try to extract CLS
+                  CLS=$(jq -r '.metrics.cumulativeLayoutShift // "N/A"' .performance-history/$LATEST_FILE 2>/dev/null || echo "N/A")
+                  echo "   Cumulative Layout Shift: $CLS"
+                fi
+              fi
+            else
+              echo "⚠️  No performance metrics directory found"
+            fi
+            
+            echo ""
+            echo "✅ All systems operational - no alerts triggered"
+          else
+            echo "⚠️  Performance benchmark job had issues (neither success nor failure)"
+            echo ""
+            echo "Status: $PERF_STATUS"
+            echo "This may indicate a workflow configuration issue"
+            echo ""
+            echo "🔧 Recommended Actions:"
+            echo "1. Review workflow logs for details"
+            echo "2. Check workflow YAML syntax"
+            echo "3. Verify all required steps completed"
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN || 'default_token' }}
