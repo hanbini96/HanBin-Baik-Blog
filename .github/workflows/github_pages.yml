@@ -28,7 +28,7 @@ jobs:
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10.22.0
+          version: 11.21.0
           run_install: false
       
       - name: Set up Node.js
@@ -102,6 +102,10 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     steps:
       - name: Download build artifact
         uses: actions/download-artifact@v4
@@ -109,12 +113,17 @@ jobs:
           name: github-pages
           path: dist
 
-      - name: Publish to GitHub Pages
-        uses: actions/deploy-pages@v4
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          timeout: 600000
-          error_count: 10
-          reporting_interval: 5000
+          path: dist/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
 
   health-check:
     needs: deploy
