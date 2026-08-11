@@ -25,6 +25,8 @@ jobs:
 
       - name: Install Supabase CLI
         run: |
+          # Retry with timeout for DNS resolution issues
+          timeout 30 bash -c 'until curl -fsSL https://cli.supabase.com/install/linux | sh; do sleep 5; done' || \
           curl -fsSL https://cli.supabase.com/install/linux | sh
           echo "$HOME/.supabase/bin" >> $GITHUB_PATH
 
@@ -33,8 +35,12 @@ jobs:
           STAGING_DB_URL: ${{ secrets.STAGING_DB_URL }}
         run: |
           if [ -z "$STAGING_DB_URL" ]; then
-            echo "STAGING_DB_URL secret is missing"; exit 1
+            echo "❌ ERROR: STAGING_DB_URL secret is missing"
+            echo "Please add the secret to GitHub: https://github.com/hanbini96/HanBin-Baik-Blog/settings/secrets/actions"
+            echo "Connection string format: postgresql://postgres:[password]@db.supabase.co:5432/postgres?search_path=public&sslmode=require"
+            exit 1
           fi
+          echo "✅ STAGING_DB_URL secret found, applying migrations..."
           supabase db push --db-url "$STAGING_DB_URL"
 
   deploy-prod:
@@ -50,6 +56,8 @@ jobs:
 
       - name: Install Supabase CLI
         run: |
+          # Retry with timeout for DNS resolution issues
+          timeout 30 bash -c 'until curl -fsSL https://cli.supabase.com/install/linux | sh; do sleep 5; done' || \
           curl -fsSL https://cli.supabase.com/install/linux | sh
           echo "$HOME/.supabase/bin" >> $GITHUB_PATH
 
@@ -58,6 +66,9 @@ jobs:
           PROD_DB_URL: ${{ secrets.PROD_DB_URL }}
         run: |
           if [ -z "$PROD_DB_URL" ]; then
-            echo "PROD_DB_URL secret is missing"; exit 1
+            echo "❌ ERROR: PROD_DB_URL secret is missing"
+            echo "Please add the secret to GitHub"
+            exit 1
           fi
+          echo "✅ PROD_DB_URL secret found, applying migrations..."
           supabase db push --db-url "$PROD_DB_URL"

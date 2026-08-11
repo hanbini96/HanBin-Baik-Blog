@@ -36,7 +36,7 @@ jobs:
         with:
           version: 11.21.0
           run_install: false
-          ignore-scripts: false
+          ignore-off: true
       
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -115,7 +115,7 @@ jobs:
         with:
           version: 11.21.0
           run_install: false
-          ignore-scripts: false
+          ignore-off: true
       
       - name: Set up Node.js
         uses: actions/setup-node@v4
