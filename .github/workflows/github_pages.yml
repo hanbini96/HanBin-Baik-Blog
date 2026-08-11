@@ -2,6 +2,8 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main, dev-update ]
   workflow_dispatch: {}
   schedule:
     - cron: '*/30 * * * *'  # Run every 30 minutes for health checks
