@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main, dev-update ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, dev-update ]
   schedule:
     - cron: '0 2 * * 1'
   workflow_dispatch: {}
@@ -36,6 +36,7 @@ jobs:
         with:
           version: 11.21.0
           run_install: false
+          ignore-scripts: false
       
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -114,6 +115,7 @@ jobs:
         with:
           version: 11.21.0
           run_install: false
+          ignore-scripts: false
       
       - name: Set up Node.js
         uses: actions/setup-node@v4
