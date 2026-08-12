@@ -1,3 +1,19 @@
+# 🔍 DISCOVERY & FIX LOG
+# ======================
+# 
+# Discovery Date: 2026-08-12
+# Issue: PR #78 workflow failures due to PNPM build script restrictions
+# Root Cause: PNPM_ALLOW_BUILDS=esbuild,sharp was causing pnpm to ignore
+#             build scripts for critical devDependencies (esbuild, sharp)
+#             which are required for Astro builds
+# 
+# Fix Applied: Removed PNPM_ALLOW_BUILDS environment variable configuration
+#              from both lighthouse and performance-benchmark jobs
+#              in .github/workflows/performance.yml
+#
+# Workflow: Performance Monitoring & Benchmarking
+#
+
 name: Performance Monitoring & Benchmarking
 
 on:
@@ -46,12 +62,16 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: '**/pnpm-lock.yaml'
       
-      - name: Configure pnpm to allow build scripts
-        run: |
-          echo "Setting PNPM_ALLOW_BUILDS environment variable..."
-          echo "PNPM_ALLOW_BUILDS=esbuild,sharp" >> $GITHUB_ENV
-        env:
-          PNPM_ALLOW_BUILDS: esbuild,sharp
+      # NOTE: Removed PNPM_ALLOW_BUILDS restriction (2026-08-12)
+      # This was causing pnpm to ignore build scripts for esbuild and sharp
+      # which are required devDependencies for Astro builds
+      # The restriction is unnecessary and was causing workflow failures
+      # - name: Configure pnpm to allow build scripts
+      #   run: |
+      #     echo "Setting PNPM_ALLOW_BUILDS environment variable..."
+      #     echo "PNPM_ALLOW_BUILDS=esbuild,sharp" >> $GITHUB_ENV
+      #   env:
+      #     PNPM_ALLOW_BUILDS: esbuild,sharp
       
       - name: Install project dependencies
         run: pnpm install --frozen-lockfile
@@ -159,10 +179,13 @@ jobs:
           node-version: 22
           cache: 'pnpm'
 
-      - name: Configure pnpm to allow build scripts
-        run: |
-          echo "Configuring pnpm to allow build scripts..."
-          echo "PNPM_ALLOW_BUILDS=esbuild,sharp" >> $GITHUB_ENV
+      # NOTE: Removed PNPM_ALLOW_BUILDS restriction (2026-08-12)
+      # This was causing pnpm to ignore build scripts for esbuild and sharp
+      # which are required devDependencies for Astro builds
+      # - name: Configure pnpm to allow build scripts
+      #   run: |
+      #     echo "Configuring pnpm to allow build scripts..."
+      #     echo "PNPM_ALLOW_BUILDS=esbuild,sharp" >> $GITHUB_ENV
 
       - name: Update browser compatibility data
         run: |
