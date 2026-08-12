@@ -1,0 +1,288 @@
+name: 🎯 Kanban Automation
+
+on:
+  issues:
+    types: [opened, labeled, closed, reopened]
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review, review_requested, closed]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+  repository-projects: write
+
+jobs:
+  kanban-automation:
+    name: 🤖 Kanban Automation
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🔐 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm install -g @actions/github
+
+      - name: 🎯 Add Issue to Project
+        if: github.event_name == 'issues' && github.event.action == 'opened'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const projectId = 'PVT_kwHOAPJAUs4BHRuM';
+            const issueUrl = context.payload.issue.html_url;
+            
+            try {
+              // Add issue to project
+              await github.rest.projects.v2.addItemToProject({
+                project_id: projectId,
+                content_id: context.payload.issue.node_id,
+                content_type: 'Issue'
+              });
+              
+              console.log(`✅ Issue #${context.payload.issue.number} added to project`);
+              
+              // Set initial status based on issue type
+              const labels = context.payload.issue.labels.map(l => l.name);
+              let status = 'Todo';
+              
+              if (labels.includes('performance') || labels.includes('lighthouse')) {
+                status = 'Todo';
+              } else if (labels.includes('bug')) {
+                status = 'Todo';
+              } else if (labels.includes('feature') || labels.includes('enhancement')) {
+                status = 'Todo';
+              }
+              
+              console.log(`📋 Setting status to: ${status}`);
+            } catch (error) {
+              console.error('❌ Failed to add issue to project:', error.message);
+            }
+
+      - name: 🔄 Update Issue Status on Label Change
+        if: github.event_name == 'issues' && github.event.action == 'labeled'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const projectId = 'PVT_kwHOAPJAUs4BHRuM';
+            const labelName = context.payload.label.name;
+            const issueNodeId = context.payload.issue.node_id;
+            
+            // Update status based on label
+            let newStatus = 'Todo';
+            
+            if (['performance', 'lighthouse', 'infrastructure'].includes(labelName)) {
+              newStatus = 'Todo';
+            } else if (['bug', 'ci-cd-failure'].includes(labelName)) {
+              newStatus = 'Todo';
+            } else if (['feature', 'enhancement', 'documentation'].includes(labelName)) {
+              newStatus = 'Todo';
+            }
+            
+            console.log(`🏷️ Label '${labelName}' added. Setting status to: ${newStatus}`);
+
+      - name: 📤 Add PR to Project
+        if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'reopened')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const projectId = 'PVT_kwHOAPJAUs4BHRuM';
+            const prUrl = context.payload.pull_request.html_url;
+            const prNodeId = context.payload.pull_request.node_id;
+            
+            try {
+              // Add PR to project
+              await github.rest.projects.v2.addItemToProject({
+                project_id: projectId,
+                content_id: prNodeId,
+                content_type: 'PullRequest'
+              });
+              
+              console.log(`✅ PR #${context.payload.pull_request.number} added to project`);
+              
+              // Set initial status
+              console.log('📋 Setting PR status to: In Progress');
+            } catch (error) {
+              console.error('❌ Failed to add PR to project:', error.message);
+            }
+
+      - name: 🔄 Update PR Status on Review Request
+        if: github.event_name == 'pull_request' && github.event.action == 'review_requested'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const projectId = 'PVT_kwHOAPJAUs4BHRuM';
+            const prNodeId = context.payload.pull_request.node_id;
+            
+            console.log('👥 PR review requested. Setting status to: Review');
+
+      - name: ✅ Update Status on PR Merge
+        if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const projectId = 'PVT_kwHOAPJAUs4BHRuM';
+            const prNodeId = context.payload.pull_request.node_id;
+            
+            console.log('🎉 PR merged. Setting status to: Done');
+
+      - name: 🔄 Update Status on Issue Close
+        if: github.event_name == 'issues' && github.event.action == 'closed'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const projectId = 'PVT_kwHOAPJAUs4BHRuM';
+            const issueNodeId = context.payload.issue.node_id;
+            
+            console.log('🔒 Issue closed. Setting status to: Done');
+
+      - name: 📊 Weekly Kanban Report
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const projectId = 'PVT_kwHOAPJAUs4BHRuM';
+            
+            // Get project items
+            const items = await github.rest.projects.v2.items.list({
+              project_id: projectId,
+              per_page: 100
+            });
+            
+            const totalItems = items.data.items.length;
+            const statusCounts = {};
+            
+            items.data.items.forEach(item => {
+              const status = item.field_values.find(fv => fv.field_type === 'single_select')?.single_select_option?.name || 'Unknown';
+              statusCounts[status] = (statusCounts[status] || 0) + 1;
+            });
+            
+            console.log('📊 Weekly Kanban Report:');
+            console.log(`Total Items: ${totalItems}`);
+            Object.entries(statusCounts).forEach(([status, count]) => {
+              console.log(`  ${status}: ${count}`);
+            });
+            
+            // Check WIP limits
+            const inProgressCount = statusCounts['In Progress'] || 0;
+            if (inProgressCount > 5) {
+              core.warning(`High WIP: ${inProgressCount} items in progress. Consider limiting work.`);
+            }
+
+  kanban-cleanup:
+    name: 🧹 Kanban Cleanup
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - name: 🔐 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🧹 Archive Old Completed Items
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const projectId = 'PVT_kwHOAPJAUs4BHRuM';
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            
+            // Get completed items
+            const items = await github.rest.projects.v2.items.list({
+              project_id: projectId,
+              per_page: 100
+            });
+            
+            const completedItems = items.data.items.filter(item => {
+              const status = item.field_values.find(fv => fv.field_type === 'single_select')?.single_select_option?.name;
+              return status === 'Done';
+            });
+            
+            console.log(`Found ${completedItems.length} completed items`);
+            
+            // Archive items older than 30 days
+            for (const item of completedItems) {
+              const updatedAt = new Date(item.updated_at);
+              if (updatedAt < thirtyDaysAgo) {
+                try {
+                  await github.rest.projects.v2.archiveItem({
+                    project_id: projectId,
+                    item_id: item.id
+                  });
+                  console.log(`Archived item: ${item.id}`);
+                } catch (error) {
+                  console.error(`Failed to archive item ${item.id}:`, error.message);
+                }
+              }
+            }
+
+  kanban-metrics:
+    name: 📈 Kanban Metrics
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: 🔐 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 📊 Generate Kanban Metrics
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const projectId = 'PVT_kwHOAPJAUs4BHRuM';
+            
+            // Get project items
+            const items = await github.rest.projects.v2.items.list({
+              project_id: projectId,
+              per_page: 100
+            });
+            
+            const totalItems = items.data.items.length;
+            const statusCounts = {};
+            const typeCounts = {};
+            
+            items.data.items.forEach(item => {
+              // Get status
+              const status = item.field_values.find(fv => fv.field_type === 'single_select')?.single_select_option?.name || 'Unknown';
+              statusCounts[status] = (statusCounts[status] || 0) + 1;
+              
+              // Get issue/PR type
+              if (item.content_type === 'Issue') {
+                const labels = item.content.labels?.nodes || [];
+                const labelNames = labels.map(l => l.name);
+                
+                if (labelNames.includes('bug')) typeCounts['Bug'] = (typeCounts['Bug'] || 0) + 1;
+                if (labelNames.includes('feature')) typeCounts['Feature'] = (typeCounts['Feature'] || 0) + 1;
+                if (labelNames.includes('performance')) typeCounts['Performance'] = (typeCounts['Performance'] || 0) + 1;
+                if (labelNames.includes('infrastructure')) typeCounts['Infrastructure'] = (typeCounts['Infrastructure'] || 0) + 1;
+              }
+            });
+            
+            console.log('📈 Kanban Metrics Report:');
+            console.log(`Total Items: ${totalItems}`);
+            console.log('Status Distribution:');
+            Object.entries(statusCounts).forEach(([status, count]) => {
+              console.log(`  ${status}: ${count}`);
+            });
+            console.log('Type Distribution:');
+            Object.entries(typeCounts).forEach(([type, count]) => {
+              console.log(`  ${type}: ${count}`);
+            });
+            
+            // Calculate cycle time metrics
+            const doneItems = items.data.items.filter(item => {
+              const status = item.field_values.find(fv => fv.field_type === 'single_select')?.single_select_option?.name;
+              return status === 'Done';
+            });
+            
+            console.log(`Completed Items: ${doneItems.length}`);
+            
+            // Store metrics for dashboard
+            core.setOutput('total_items', totalItems);
+            core.setOutput('in_progress', statusCounts['In Progress'] || 0);
+            core.setOutput('todo', statusCounts['Todo'] || 0);
+            core.setOutput('done', statusCounts['Done'] || 0);
