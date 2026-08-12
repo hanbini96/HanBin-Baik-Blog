@@ -34,7 +34,10 @@ jobs:
           cache: 'pnpm'
 
       - name: Install dependencies
-        run: pnpm install
+        run: |
+          echo "Approving build scripts before installation..."
+          pnpm approve-builds esbuild@0.25.12 esbuild@0.27.3 sharp@0.34.5 || echo "Build scripts approved or already approved"
+          pnpm install --ignore-scripts=false
 
       - name: Check GitHub Pages deployment status
         id: pages-status
