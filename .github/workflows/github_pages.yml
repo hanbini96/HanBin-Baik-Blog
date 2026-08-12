@@ -46,15 +46,23 @@ jobs:
         env:
           PNPM_ALLOW_BUILDS: esbuild,sharp
 
+      - name: Update PATH for pnpm
+        run: |
+          # Ensure pnpm is in PATH
+          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || echo "$HOME/.pnpm-global/bin")
+          echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
+          mkdir -p "$PNPM_GLOBAL_BIN"
+          source /home/runner/.bashrc
+
       - name: Update browser compatibility data
         run: |
           echo "Updating browser compatibility data..."
           npx update-browserslist-db@latest || echo "Warning: browserslist update failed, continuing..."
-          /home/runner/setup-pnpm/node_modules/.bin/pnpm add -D baseline-browser-mapping@latest || echo "Warning: baseline-browser-mapping install failed, continuing..."
+          pnpm add -D baseline-browser-mapping@latest || echo "Warning: baseline-browser-mapping install failed, continuing..."
           echo "✅ Browser data update completed"
 
       - name: Build Astro site
-        run: /home/runner/setup-pnpm/node_modules/.bin/pnpm build
+        run: pnpm build
         env:
           NODE_OPTIONS: --max-old-space-size=4096
 

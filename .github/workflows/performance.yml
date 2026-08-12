@@ -59,9 +59,12 @@ jobs:
           echo "PNPM_GLOBAL_BIN=$PNPM_GLOBAL_BIN" >> $GITHUB_ENV
           echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
           mkdir -p "$PNPM_GLOBAL_BIN"
-      
+          # Source the bashrc to update PATH immediately
+          source /home/runner/.bashrc
+
       - name: Install global dependencies
         run: |
+          source /home/runner/.bashrc
           pnpm add -g lighthouse @lhci/cli
           lhci --version || echo "lhci not found"
           lighthouse --version || echo "lighthouse not found"

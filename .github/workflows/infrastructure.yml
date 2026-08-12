@@ -32,6 +32,14 @@ jobs:
           node-version: 22
           cache: 'pnpm'
 
+      - name: Configure pnpm PATH
+        run: |
+          # Ensure pnpm is in PATH
+          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || echo "$HOME/.pnpm-global/bin")
+          echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
+          mkdir -p "$PNPM_GLOBAL_BIN"
+          source /home/runner/.bashrc
+
       - name: Configure pnpm to allow build scripts
         run: |
           echo "Setting PNPM_ALLOW_BUILDS environment variable..."
