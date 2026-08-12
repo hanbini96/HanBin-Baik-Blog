@@ -35,13 +35,13 @@ jobs:
           node-version: '22'
           cache: 'pnpm'
 
-      - name: 📦 Install dependencies
-        run: pnpm install
-
       - name: ✅ Approve build scripts for required packages
         run: |
           echo "Approving build scripts for esbuild and sharp..."
           pnpm approve-builds esbuild@0.25.12 esbuild@0.27.3 sharp@0.34.5 || echo "Build scripts approved or already approved"
+
+      - name: 📦 Install dependencies
+        run: pnpm install
 
       - name: 🎯 Add Issue to Project
         if: github.event_name == 'issues' && github.event.action == 'opened'
