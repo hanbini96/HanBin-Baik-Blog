@@ -46,7 +46,6 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: '**/pnpm-lock.yaml'
       
-
       - name: Configure pnpm to allow build scripts
         run: |
           echo "Setting PNPM_ALLOW_BUILDS environment variable..."
@@ -54,24 +53,31 @@ jobs:
         env:
           PNPM_ALLOW_BUILDS: esbuild,sharp
       
-      - name: Configure pnpm PATH using official setup
+      - name: Install project dependencies
+        run: pnpm install --frozen-lockfile
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+      
+      - name: Build Astro site
+        run: pnpm build
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+      
+      - name: Setup pnpm global bin directory
         run: |
-          # Use the official pnpm setup's bin directory
-          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir)
-          echo "pnpm global bin directory: $PNPM_GLOBAL_BIN"
+          # Setup pnpm global bin directory properly
+          pnpm setup
           
-          # Add pnpm global bin directory to PATH
+          # Get and configure the global bin directory
+          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || echo "$HOME/.pnpm-global/bin")
+          echo "PNPM_GLOBAL_BIN=$PNPM_GLOBAL_BIN" >> $GITHUB_ENV
           echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
-          
-          # Also add common locations for compatibility
-          echo "$(npm bin -g)" >> $GITHUB_PATH
-          echo "$HOME/.pnpm-global/bin" >> $GITHUB_PATH
+          mkdir -p "$PNPM_GLOBAL_BIN"
           
           # Verify pnpm is available
           if ! command -v pnpm &> /dev/null; then
             echo "❌ ERROR: pnpm is not available in PATH"
             echo "Current PATH: $PATH"
-            pnpm config get global-bin-dir || true
             which pnpm || true
             exit 1
           fi
@@ -80,10 +86,9 @@ jobs:
           echo "✅ pnpm is available: $(pnpm --version)"
           echo "✅ PATH configured with pnpm global bin directory"
 
-      - name: Install global dependencies
+      - name: Install Lighthouse CLI globally
         run: |
-          # Install global dependencies using project pnpm
-          # This ensures PATH is properly configured
+          # Install global dependencies using pnpm (not npm) for consistency
           pnpm add -g lighthouse @lhci/cli
           
           # Verify installations with proper error handling
@@ -103,11 +108,6 @@ jobs:
           
           lhci --version
           lighthouse --version
-      
-      - name: Build Astro site
-        run: pnpm build
-        env:
-          NODE_OPTIONS: --max-old-space-size=4096
       
       - name: Run Lighthouse CI with GitHub App Token
         uses: treosh/lighthouse-ci-action@v10
