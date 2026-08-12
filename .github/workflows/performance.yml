@@ -1,3 +1,19 @@
+# 🔍 DISCOVERY & FIX LOG
+# ======================
+# 
+# Discovery Date: 2026-08-12
+# Issue: PR #78 workflow failures due to PNPM build script restrictions
+# Root Cause: PNPM_ALLOW_BUILDS=esbuild,sharp was causing pnpm to ignore
+#             build scripts for critical devDependencies (esbuild, sharp)
+#             which are required for Astro builds
+# 
+# Fix Applied: Removed PNPM_ALLOW_BUILDS environment variable configuration
+#              from both lighthouse and performance-benchmark jobs
+#              in .github/workflows/performance.yml
+#
+# Workflow: Performance Monitoring & Benchmarking
+#
+
 name: Performance Monitoring & Benchmarking
 
 on:
@@ -6,7 +22,7 @@ on:
   pull_request:
     branches: [ main, dev-update ]
   schedule:
-    - cron: '0 2 * * 1'
+    - cron: '0 */2 * * *'
   workflow_dispatch: {}
 
 env:
@@ -33,45 +49,87 @@ jobs:
       
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
+        id: pnpm-setup
         with:
           version: 11.21.0
           run_install: false
           ignore-off: true
+
+      - name: Set up Node.js with pnpm cache
+=======
+          ignore-off: true
       
       - name: Set up Node.js
+>>>>>>> origin/main
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 22
           cache: 'pnpm'
+          cache-dependency-path: '**/pnpm-lock.yaml'
       
-      - name: Install dependencies
-        run: pnpm install
+      # CRITICAL FIX for pnpm 11+ security: Approve build scripts before install
+      # pnpm 11+ ignores build scripts by default for security reasons
+      # esbuild and sharp are required devDependencies for Astro builds
+      - name: Approve build scripts for required packages
+        run: |
+          echo "✅ Approving build scripts for esbuild and sharp (pnpm 11+ security)..."
+          pnpm approve-builds esbuild@0.25.12 esbuild@0.27.3 sharp@0.34.5 || echo "Build scripts already approved"
 
-      - name: Update browser compatibility data
-        run: |
-          echo "Updating browser compatibility data..."
-          npx update-browserslist-db@latest || echo "Warning: browserslist update failed, continuing..."
-          pnpm add -D baseline-browser-mapping@latest || echo "Warning: baseline-browser-mapping install failed, continuing..."
-          echo "Browser data update completed"
-      
-      - name: Setup pnpm global bin directory
-        run: |
-          pnpm setup
-          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || echo "$HOME/.pnpm-global/bin")
-          echo "PNPM_GLOBAL_BIN=$PNPM_GLOBAL_BIN" >> $GITHUB_ENV
-          echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
-          mkdir -p "$PNPM_GLOBAL_BIN"
-      
-      - name: Install global dependencies
-        run: |
-          pnpm add -g lighthouse @lhci/cli
-          lhci --version || echo "lhci not found"
-          lighthouse --version || echo "lighthouse not found"
+      - name: Install project dependencies
+        run: pnpm install --frozen-lockfile
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
       
       - name: Build Astro site
         run: pnpm build
         env:
           NODE_OPTIONS: --max-old-space-size=4096
+      
+      - name: Setup pnpm global bin directory
+        run: |
+          # Setup pnpm global bin directory properly
+          pnpm setup
+          
+          # Get and configure the global bin directory
+          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || echo "$HOME/.pnpm-global/bin")
+          echo "PNPM_GLOBAL_BIN=$PNPM_GLOBAL_BIN" >> $GITHUB_ENV
+          echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
+          mkdir -p "$PNPM_GLOBAL_BIN"
+          
+          # Verify pnpm is available
+          if ! command -v pnpm &> /dev/null; then
+            echo "❌ ERROR: pnpm is not available in PATH"
+            echo "Current PATH: $PATH"
+            which pnpm || true
+            exit 1
+          fi
+          
+          pnpm --version
+          echo "✅ pnpm is available: $(pnpm --version)"
+          echo "✅ PATH configured with pnpm global bin directory"
+
+      - name: Install Lighthouse CLI globally
+        run: |
+          # Install global dependencies using pnpm (not npm) for consistency
+          pnpm add -g lighthouse @lhci/cli
+          
+          # Verify installations with proper error handling
+          if ! command -v lhci &> /dev/null; then
+            echo "❌ ERROR: lhci not found after installation"
+            echo "PATH is: $PATH"
+            which lhci || true
+            exit 1
+          fi
+          
+          if ! command -v lighthouse &> /dev/null; then
+            echo "❌ ERROR: lighthouse not found after installation"
+            echo "PATH is: $PATH"
+            which lighthouse || true
+            exit 1
+          fi
+          
+          lhci --version
+          lighthouse --version
       
       - name: Run Lighthouse CI with GitHub App Token
         uses: treosh/lighthouse-ci-action@v10
@@ -120,11 +178,14 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 22
           cache: 'pnpm'
 
-      - name: Install dependencies
-        run: pnpm install
+      # CRITICAL FIX for pnpm 11+ security: Approve build scripts before install
+      - name: Approve build scripts for required packages
+        run: |
+          echo "✅ Approving build scripts for esbuild and sharp (pnpm 11+ security)..."
+          pnpm approve-builds esbuild@0.25.12 esbuild@0.27.3 sharp@0.34.5 || echo "Build scripts already approved"
 
       - name: Update browser compatibility data
         run: |

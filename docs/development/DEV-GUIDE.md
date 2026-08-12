@@ -105,6 +105,39 @@ git push origin feature/[feature-name]
 - **Testing**: Test migrations locally before committing
 - **Safety**: Use `supabase db push` to apply to your database
 
+### 3. pnpm 11+ Security Configuration
+
+**Important**: This project uses pnpm v11.21.0 which has security features that require configuration.
+
+#### Required Setup
+
+**Option A: Permanent Configuration (Recommended)**
+Add to `pnpm-workspace.yaml`:
+```yaml
+allowBuilds:
+  esbuild: true
+  sharp: true
+```
+
+**Option B: Manual Approval (Temporary)**
+```bash
+pnpm approve-builds esbuild sharp
+```
+
+**Why This Is Needed:**
+- pnpm 11+ ignores build scripts by default for security
+- esbuild and sharp require build scripts to compile native binaries
+- Without approval, `pnpm install` fails with `ERR_PNPM_IGNORED_BUILDS`
+
+#### Verification
+```bash
+# Should succeed without errors
+pnpm install
+
+# Should build successfully
+pnpm build
+```
+
 ### 3. Testing Strategy
 
 #### Local Testing
