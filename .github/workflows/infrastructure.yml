@@ -42,7 +42,7 @@ jobs:
           pnpm config set ignore-scripts false
           
           echo "Installing dependencies with build scripts enabled..."
-          pnpm install --ignore-scripts=false
+          pnpm install
         env:
           PNPM_ALLOW_BUILDS: esbuild,sharp
 

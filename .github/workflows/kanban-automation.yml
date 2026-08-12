@@ -27,7 +27,7 @@ jobs:
         with:
           version: 11.21.0
           run_install: false
-          ignore-scripts: false
+          
 
       - name: 🔧 Setup Node.js
         uses: actions/setup-node@v4
@@ -35,10 +35,6 @@ jobs:
           node-version: '22'
           cache: 'pnpm'
 
-      - name: ✅ Approve build scripts for required packages
-        run: |
-          echo "Approving build scripts for esbuild and sharp..."
-          pnpm approve-builds esbuild@0.25.12 esbuild@0.27.3 sharp@0.34.5 || echo "Build scripts approved or already approved"
 
       - name: 📦 Configure pnpm to allow build scripts
         run: |
@@ -49,7 +45,7 @@ jobs:
           pnpm config set ignore-scripts false
           
           echo "Installing dependencies with build scripts enabled..."
-          pnpm install --ignore-scripts=false
+          pnpm install
         env:
           PNPM_ALLOW_BUILDS: esbuild,sharp
 
