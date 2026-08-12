@@ -54,16 +54,20 @@ jobs:
         env:
           PNPM_ALLOW_BUILDS: esbuild,sharp
       
-      - name: Add pnpm to PATH and verify availability
+      - name: Configure pnpm PATH using official setup
         run: |
-          # Add pnpm to PATH for all subsequent steps
-          echo "$(pnpm bin)" >> $GITHUB_PATH
+          # Use the official pnpm setup's bin directory
+          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir)
+          echo "pnpm global bin directory: $PNPM_GLOBAL_BIN"
+          
+          # Add pnpm global bin directory to PATH
+          echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
+          
+          # Also add common locations for compatibility
           echo "$(npm bin -g)" >> $GITHUB_PATH
-          # Create global bin directory if it doesn't exist
-          mkdir -p "$HOME/.pnpm-global/bin"
           echo "$HOME/.pnpm-global/bin" >> $GITHUB_PATH
           
-          # Verify pnpm is available BEFORE proceeding
+          # Verify pnpm is available
           if ! command -v pnpm &> /dev/null; then
             echo "❌ ERROR: pnpm is not available in PATH"
             echo "Current PATH: $PATH"
@@ -74,20 +78,26 @@ jobs:
           
           pnpm --version
           echo "✅ pnpm is available: $(pnpm --version)"
+          echo "✅ PATH configured with pnpm global bin directory"
 
       - name: Install global dependencies
         run: |
-          # Use npx to run global commands with project pnpm
-          npx --yes pnpm add -g lighthouse @lhci/cli
+          # Install global dependencies using project pnpm
+          # This ensures PATH is properly configured
+          pnpm add -g lighthouse @lhci/cli
           
           # Verify installations with proper error handling
           if ! command -v lhci &> /dev/null; then
             echo "❌ ERROR: lhci not found after installation"
+            echo "PATH is: $PATH"
+            which lhci || true
             exit 1
           fi
           
           if ! command -v lighthouse &> /dev/null; then
             echo "❌ ERROR: lighthouse not found after installation"
+            echo "PATH is: $PATH"
+            which lighthouse || true
             exit 1
           fi
           
