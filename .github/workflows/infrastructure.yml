@@ -34,11 +34,19 @@ jobs:
 
       - name: Configure pnpm PATH
         run: |
-          # Ensure pnpm is in PATH
-          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || echo "$HOME/.pnpm-global/bin")
-          echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
-          mkdir -p "$PNPM_GLOBAL_BIN"
-          source /home/runner/.bashrc
+          # Add pnpm to PATH for all subsequent steps
+          echo "$(pnpm bin)" >> $GITHUB_PATH
+          echo "$(npm bin -g)" >> $GITHUB_PATH
+          # Create global bin directory if it doesn't exist
+          mkdir -p "$HOME/.pnpm-global/bin"
+          echo "$HOME/.pnpm-global/bin" >> $GITHUB_PATH
+          
+          # Verify pnpm is available
+          if ! command -v pnpm &> /dev/null; then
+            echo "❌ ERROR: pnpm is not available in PATH"
+            exit 1
+          fi
+          pnpm --version
 
       - name: Configure pnpm to allow build scripts
         run: |

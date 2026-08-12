@@ -33,16 +33,18 @@ jobs:
       
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
+        id: pnpm-setup
         with:
           version: 11.21.0
           run_install: false
-          
-      
-      - name: Set up Node.js
+        
+
+      - name: Set up Node.js with pnpm cache
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: 'pnpm'
+          cache-dependency-path: '**/pnpm-lock.yaml'
       
 
       - name: Configure pnpm to allow build scripts
@@ -52,22 +54,45 @@ jobs:
         env:
           PNPM_ALLOW_BUILDS: esbuild,sharp
       
-      - name: Setup pnpm global bin directory
+      - name: Add pnpm to PATH and verify availability
         run: |
-          pnpm setup
-          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || echo "$HOME/.pnpm-global/bin")
-          echo "PNPM_GLOBAL_BIN=$PNPM_GLOBAL_BIN" >> $GITHUB_ENV
-          echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
-          mkdir -p "$PNPM_GLOBAL_BIN"
-          # Source the bashrc to update PATH immediately
-          source /home/runner/.bashrc
+          # Add pnpm to PATH for all subsequent steps
+          echo "$(pnpm bin)" >> $GITHUB_PATH
+          echo "$(npm bin -g)" >> $GITHUB_PATH
+          # Create global bin directory if it doesn't exist
+          mkdir -p "$HOME/.pnpm-global/bin"
+          echo "$HOME/.pnpm-global/bin" >> $GITHUB_PATH
+          
+          # Verify pnpm is available BEFORE proceeding
+          if ! command -v pnpm &> /dev/null; then
+            echo "❌ ERROR: pnpm is not available in PATH"
+            echo "Current PATH: $PATH"
+            pnpm config get global-bin-dir || true
+            which pnpm || true
+            exit 1
+          fi
+          
+          pnpm --version
+          echo "✅ pnpm is available: $(pnpm --version)"
 
       - name: Install global dependencies
         run: |
-          source /home/runner/.bashrc
-          pnpm add -g lighthouse @lhci/cli
-          lhci --version || echo "lhci not found"
-          lighthouse --version || echo "lighthouse not found"
+          # Use npx to run global commands with project pnpm
+          npx --yes pnpm add -g lighthouse @lhci/cli
+          
+          # Verify installations with proper error handling
+          if ! command -v lhci &> /dev/null; then
+            echo "❌ ERROR: lhci not found after installation"
+            exit 1
+          fi
+          
+          if ! command -v lighthouse &> /dev/null; then
+            echo "❌ ERROR: lighthouse not found after installation"
+            exit 1
+          fi
+          
+          lhci --version
+          lighthouse --version
       
       - name: Build Astro site
         run: pnpm build

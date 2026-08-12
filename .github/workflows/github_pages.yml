@@ -29,15 +29,17 @@ jobs:
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
+        id: pnpm-setup
         with:
           version: 11.21.0
           run_install: false
       
-      - name: Set up Node.js
+      - name: Set up Node.js with pnpm cache
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: 'pnpm'
+          cache-dependency-path: '**/pnpm-lock.yaml'
 
       - name: Configure pnpm to allow build scripts
         run: |
@@ -46,13 +48,26 @@ jobs:
         env:
           PNPM_ALLOW_BUILDS: esbuild,sharp
 
-      - name: Update PATH for pnpm
+      - name: Configure pnpm PATH and verify
         run: |
-          # Ensure pnpm is in PATH
-          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || echo "$HOME/.pnpm-global/bin")
-          echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
-          mkdir -p "$PNPM_GLOBAL_BIN"
-          source /home/runner/.bashrc
+          # Add pnpm to PATH for all subsequent steps
+          echo "$(pnpm bin)" >> $GITHUB_PATH
+          echo "$(npm bin -g)" >> $GITHUB_PATH
+          # Create global bin directory if it doesn't exist
+          mkdir -p "$HOME/.pnpm-global/bin"
+          echo "$HOME/.pnpm-global/bin" >> $GITHUB_PATH
+          
+          # Verify pnpm is available BEFORE proceeding
+          if ! command -v pnpm &> /dev/null; then
+            echo "❌ ERROR: pnpm is not available in PATH"
+            echo "Current PATH: $PATH"
+            pnpm config get global-bin-dir || true
+            which pnpm || true
+            exit 1
+          fi
+          
+          pnpm --version
+          echo "✅ pnpm is available: $(pnpm --version)"
 
       - name: Update browser compatibility data
         run: |
@@ -109,7 +124,7 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: github-pages
+          name: github-pages-${{ github.sha }}-${{ github.run_number }}
           path: dist/
           retention-days: 1
 
@@ -124,7 +139,7 @@ jobs:
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
-          name: github-pages
+          name: github-pages-${{ github.sha }}-${{ github.run_number }}
           path: dist
 
       - name: Configure GitHub Pages
