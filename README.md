@@ -25,11 +25,18 @@ Welcome to your **Astro + Supabase blog starter**! This repository contains a mi
 
    Supabase credentials are safe to publish; they’re public environment variables used for client‑side access.
 
-3. **Install dependencies** (requires Node 18+ and `pnpm` or `npm`):
+3. **Install dependencies** (requires Node 18+ and `pnpm` v11.21.0):
 
    ```bash
    pnpm install
    pnpm run dev
+   ```
+
+   **Note**: This project uses pnpm v11.21.0 which has security features. If you see `ERR_PNPM_IGNORED_BUILDS` errors, add this to `pnpm-workspace.yaml`:
+   ```yaml
+   allowBuilds:
+     esbuild: true
+     sharp: true
    ```
 
    The site runs locally at http://localhost:4321.
@@ -156,6 +163,37 @@ For personal blogs, **Plausible Analytics** is the best choice:
 
 See **[SENTRY_VS_ALTERNATIVES.md](SENTRY_VS_ALTERNATIVES.md)** for detailed comparison.
 
+## 📚 Documentation & Resources
+
+This project includes comprehensive documentation organized by topic:
+
+### 📖 Main Documentation
+- **[Complete Documentation Guide](docs/README.md)** - Organized by topic with quick navigation
+- **[Development Guide](docs/development/DEV-GUIDE.md)** - Complete development workflow and best practices
+- **[Performance Monitoring](docs/performance/PERFORMANCE_MONITORING.md)** - Performance tracking and optimization strategies
+- **[Infrastructure Monitoring](docs/infrastructure/INFRASTRUCTURE_MONITORING.md)** - Infrastructure health checks and monitoring setup
+
+### ⚡ Quick Start Resources
+- **[Quick Start Guide](docs/getting-started/QUICK_START_GUIDE.md)** - Get up and running in minutes
+- **[Node.js Version Guide](docs/development/NODE_VERSION_GUIDE.md)** - Node.js and pnpm setup
+- **[Lighthouse Setup](docs/performance/LIGHTHOUSE_SETUP.md)** - Performance monitoring configuration
+
+### 🛠️ Troubleshooting
+- **[pnpm 11+ Fixes](docs/troubleshooting/PNPM_11_PLUS_FIXES.md)** - Common pnpm security configuration issues
+- **[Workflow Failure Assessment](docs/troubleshooting/WORKFLOW_FAILURE_ASSESSMENT.md)** - GitHub Actions troubleshooting
+- **[Workflow Fix Strategy](docs/troubleshooting/WORKFLOW_FIX_STRATEGY.md)** - Workflow optimization strategies
+
+### 📊 Performance & Benchmarks
+- **[Benchmarks](docs/performance/BENCHMARKS.md)** - Performance metrics, targets, and historical tracking
+- **[Performance Monitoring Guide](docs/performance/PERFORMANCE_MONITORING.md)** - Automated benchmarking setup
+
+### 🎯 Issue Tracking
+- **[GitHub Issues Dashboard](https://github.com/hanbini96/HanBin-Baik-Blog/issues)** - All project issues
+- **[Stabilization Plan](STABILIZATION_PLAN.md)** - Overall stabilization strategy
+- **[Observability Setup](OBSERVABILITY_SETUP.md)** - Monitoring and observability guide
+
+---
+
 ## 🛡️ Error Tracking & Observability
 
 This project includes comprehensive error tracking and observability features to ensure site reliability and performance.
@@ -193,7 +231,7 @@ This project includes a comprehensive stabilization and observability initiative
 
 ### 📊 Documentation Files
 - **[STABILIZATION_PLAN.md](STABILIZATION_PLAN.md)** - Overall plan and strategy for stabilization
-- **[BENCHMARKS.md](BENCHMARKS.md)** - Performance and stability benchmarks with historical tracking
+- **[Benchmarks](docs/performance/BENCHMARKS.md)** - Performance metrics, targets, and historical tracking
 - **[OBSERVABILITY_SETUP.md](OBSERVABILITY_SETUP.md)** - Detailed guide for setting up monitoring and observability
 
 ### 🚀 Working Branches
