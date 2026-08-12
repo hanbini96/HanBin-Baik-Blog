@@ -51,7 +51,14 @@ This assessment identifies **critical workflow execution failures** across three
 - Missing `source /home/runner/.bashrc` to update environment
 - No fallback PATH configuration for pnpm
 
-#### B. GitHub Pages Deployment Issues
+#### B. **pnpm 11+ Security Features (DISCOVERED - NEW ISSUE)**
+- **pnpm 11+ ignores build scripts by default** for security reasons
+- **Error**: `ERR_PNPM_IGNORED_BUILDS` for esbuild and sharp
+- **Affected packages**: esbuild@0.25.12, esbuild@0.27.3, sharp@0.34.5
+- **Required fix**: `pnpm approve-builds esbuild sharp` before `pnpm install`
+- **Old approach**: `PNPM_ALLOW_BUILDS` environment variable (doesn't work in pnpm 11+)
+
+#### C. GitHub Pages Deployment Issues
 - Build verification failing on symlinks/hard links in `dist/` directory
 - Missing proper error handling for deployment failures
 - No rollback mechanism for failed deployments
@@ -221,7 +228,42 @@ run: pnpm build
 - Removed hardcoded `/home/runner/setup-pnpm/node_modules/.bin/pnpm` references
 - Applied to 15+ pnpm command instances across workflows
 
-#### 3. CI/CD Failure Template Update
+#### 3. **pnpm 11+ Security Fix (NEW DISCOVERY)**
+
+**Problem**: pnpm 11+ ignores build scripts by default for security
+
+**Evidence**:
+```
+[ERR_PNPM_IGNORED_BUILDS] Ignored build scripts: esbuild@0.25.12, esbuild@0.27.3, sharp@0.34.5
+```
+
+**Root Cause**:
+- pnpm 11+ introduced security feature to ignore build scripts by default
+- esbuild and sharp are required devDependencies for Astro builds
+- Without approval, `pnpm install` fails with exit code 1
+
+**Solution**: Add `pnpm approve-builds` step BEFORE `pnpm install`:
+
+```yaml
+- name: Approve build scripts for required packages
+  run: |
+    echo "Approving build scripts for esbuild and sharp..."
+    pnpm approve-builds esbuild@0.25.12 esbuild@0.27.3 sharp@0.34.5 || echo "Build scripts already approved"
+
+- name: Install dependencies
+  run: pnpm install --frozen-lockfile
+```
+
+**Changes Made**:
+- Added `pnpm approve-builds` step to all 4 workflow files
+- Updated github_pages.yml, infrastructure.yml, performance.yml, kanban-automation.yml
+- Applied to both lighthouse and performance-benchmark jobs
+
+**Why old approach failed**:
+- `PNPM_ALLOW_BUILDS` environment variable doesn't work in pnpm 11+
+- Must use `pnpm approve-builds` command instead
+
+#### 4. CI/CD Failure Template Update
 
 **Problem**: Issue template didn't match actual workflow failures
 

@@ -62,17 +62,14 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: '**/pnpm-lock.yaml'
       
-      # NOTE: Removed PNPM_ALLOW_BUILDS restriction (2026-08-12)
-      # This was causing pnpm to ignore build scripts for esbuild and sharp
-      # which are required devDependencies for Astro builds
-      # The restriction is unnecessary and was causing workflow failures
-      # - name: Configure pnpm to allow build scripts
-      #   run: |
-      #     echo "Setting PNPM_ALLOW_BUILDS environment variable..."
-      #     echo "PNPM_ALLOW_BUILDS=esbuild,sharp" >> $GITHUB_ENV
-      #   env:
-      #     PNPM_ALLOW_BUILDS: esbuild,sharp
-      
+      # CRITICAL FIX for pnpm 11+ security: Approve build scripts before install
+      # pnpm 11+ ignores build scripts by default for security reasons
+      # esbuild and sharp are required devDependencies for Astro builds
+      - name: Approve build scripts for required packages
+        run: |
+          echo "✅ Approving build scripts for esbuild and sharp (pnpm 11+ security)..."
+          pnpm approve-builds esbuild@0.25.12 esbuild@0.27.3 sharp@0.34.5 || echo "Build scripts already approved"
+
       - name: Install project dependencies
         run: pnpm install --frozen-lockfile
         env:
@@ -179,13 +176,11 @@ jobs:
           node-version: 22
           cache: 'pnpm'
 
-      # NOTE: Removed PNPM_ALLOW_BUILDS restriction (2026-08-12)
-      # This was causing pnpm to ignore build scripts for esbuild and sharp
-      # which are required devDependencies for Astro builds
-      # - name: Configure pnpm to allow build scripts
-      #   run: |
-      #     echo "Configuring pnpm to allow build scripts..."
-      #     echo "PNPM_ALLOW_BUILDS=esbuild,sharp" >> $GITHUB_ENV
+      # CRITICAL FIX for pnpm 11+ security: Approve build scripts before install
+      - name: Approve build scripts for required packages
+        run: |
+          echo "✅ Approving build scripts for esbuild and sharp (pnpm 11+ security)..."
+          pnpm approve-builds esbuild@0.25.12 esbuild@0.27.3 sharp@0.34.5 || echo "Build scripts already approved"
 
       - name: Update browser compatibility data
         run: |

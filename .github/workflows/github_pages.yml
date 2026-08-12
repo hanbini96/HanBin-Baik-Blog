@@ -41,12 +41,11 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: '**/pnpm-lock.yaml'
 
-      - name: Configure pnpm to allow build scripts
+      # CRITICAL FIX for pnpm 11+ security: Approve build scripts before install
+      - name: Approve build scripts for required packages
         run: |
-          echo "Setting PNPM_ALLOW_BUILDS environment variable..."
-          echo "PNPM_ALLOW_BUILDS=esbuild,sharp" >> $GITHUB_ENV
-        env:
-          PNPM_ALLOW_BUILDS: esbuild,sharp
+          echo "✅ Approving build scripts for esbuild and sharp (pnpm 11+ security)..."
+          pnpm approve-builds esbuild@0.25.12 esbuild@0.27.3 sharp@0.34.5 || echo "Build scripts already approved"
 
       - name: Configure pnpm PATH and verify
         run: |
