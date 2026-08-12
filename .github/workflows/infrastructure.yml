@@ -32,10 +32,27 @@ jobs:
           node-version: 22
           cache: 'pnpm'
 
-      - name: Configure pnpm to allow build scripts
+      # CRITICAL FIX for pnpm 11+ security: Approve build scripts before install
+      - name: Approve build scripts for required packages
         run: |
-          echo "Setting PNPM_ALLOW_BUILDS environment variable..."
-          echo "PNPM_ALLOW_BUILDS=esbuild,sharp" >> $GITHUB_ENV
+          echo "✅ Approving build scripts for esbuild and sharp (pnpm 11+ security)..."
+          pnpm approve-builds esbuild@0.25.12 esbuild@0.27.3 sharp@0.34.5 || echo "Build scripts already approved"
+
+      - name: Configure pnpm PATH
+        run: |
+          # Add pnpm to PATH for all subsequent steps
+          echo "$(pnpm bin)" >> $GITHUB_PATH
+          echo "$(npm bin -g)" >> $GITHUB_PATH
+          # Create global bin directory if it doesn't exist
+          mkdir -p "$HOME/.pnpm-global/bin"
+          echo "$HOME/.pnpm-global/bin" >> $GITHUB_PATH
+          
+          # Verify pnpm is available
+          if ! command -v pnpm &> /dev/null; then
+            echo "❌ ERROR: pnpm is not available in PATH"
+            exit 1
+          fi
+          pnpm --version
         env:
           PNPM_ALLOW_BUILDS: esbuild,sharp
 

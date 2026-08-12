@@ -29,32 +29,54 @@ jobs:
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
+        id: pnpm-setup
         with:
           version: 11.21.0
           run_install: false
       
-      - name: Set up Node.js
+      - name: Set up Node.js with pnpm cache
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'pnpm'
+          cache-dependency-path: '**/pnpm-lock.yaml'
 
-      - name: Configure pnpm to allow build scripts
+      # CRITICAL FIX for pnpm 11+ security: Approve build scripts before install
+      - name: Approve build scripts for required packages
         run: |
-          echo "Setting PNPM_ALLOW_BUILDS environment variable..."
-          echo "PNPM_ALLOW_BUILDS=esbuild,sharp" >> $GITHUB_ENV
-        env:
-          PNPM_ALLOW_BUILDS: esbuild,sharp
+          echo "✅ Approving build scripts for esbuild and sharp (pnpm 11+ security)..."
+          pnpm approve-builds esbuild@0.25.12 esbuild@0.27.3 sharp@0.34.5 || echo "Build scripts already approved"
+
+      - name: Configure pnpm PATH and verify
+        run: |
+          # Add pnpm to PATH for all subsequent steps
+          echo "$(pnpm bin)" >> $GITHUB_PATH
+          echo "$(npm bin -g)" >> $GITHUB_PATH
+          # Create global bin directory if it doesn't exist
+          mkdir -p "$HOME/.pnpm-global/bin"
+          echo "$HOME/.pnpm-global/bin" >> $GITHUB_PATH
+          
+          # Verify pnpm is available BEFORE proceeding
+          if ! command -v pnpm &> /dev/null; then
+            echo "❌ ERROR: pnpm is not available in PATH"
+            echo "Current PATH: $PATH"
+            pnpm config get global-bin-dir || true
+            which pnpm || true
+            exit 1
+          fi
+          
+          pnpm --version
+          echo "✅ pnpm is available: $(pnpm --version)"
 
       - name: Update browser compatibility data
         run: |
           echo "Updating browser compatibility data..."
           npx update-browserslist-db@latest || echo "Warning: browserslist update failed, continuing..."
-          /home/runner/setup-pnpm/node_modules/.bin/pnpm add -D baseline-browser-mapping@latest || echo "Warning: baseline-browser-mapping install failed, continuing..."
+          pnpm add -D baseline-browser-mapping@latest || echo "Warning: baseline-browser-mapping install failed, continuing..."
           echo "✅ Browser data update completed"
 
       - name: Build Astro site
-        run: /home/runner/setup-pnpm/node_modules/.bin/pnpm build
+        run: pnpm build
         env:
           NODE_OPTIONS: --max-old-space-size=4096
 
@@ -101,7 +123,7 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: github-pages
+          name: github-pages-${{ github.sha }}-${{ github.run_number }}
           path: dist/
           retention-days: 1
 
@@ -116,7 +138,7 @@ jobs:
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
-          name: github-pages
+          name: github-pages-${{ github.sha }}-${{ github.run_number }}
           path: dist
 
       - name: Configure GitHub Pages

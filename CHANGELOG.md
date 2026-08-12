@@ -75,17 +75,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CHANGED**: `package.json` engines field updated to `>=22.0.0`
 - **CHANGED**: `.nvmrc` updated to Node.js 22
 - **CHANGED**: GitHub Actions `setup-node` actions updated to use Node 22
-- **NEW**: Comprehensive Node.js version policy (`NODE_VERSION_GUIDE.md`)
+- **NEW**: Comprehensive Node.js version policy ([NODE_VERSION_GUIDE.md](docs/development/NODE_VERSION_GUIDE.md))
 - **NEW**: Node.js migration guide and troubleshooting documentation
 - **NEW**: Automated verification scripts for Node.js consistency
 
 #### Documentation & Maintenance
 - **NEW**: `CHANGELOG.md` - This file, following Keep a Changelog standards
-- **NEW**: `NODE_VERSION_GUIDE.md` - Single source of truth for Node.js management
-- **NEW**: `PERFORMANCE_MONITORING.md` - Enhanced documentation
-- **NEW**: `INFRASTRUCTURE_MONITORING.md` - Infrastructure monitoring setup guide
-- **NEW**: `LIGHTHOUSE_SETUP.md` - Lighthouse CI setup and configuration
-- **ARCHIVED**: Historical documentation moved to `.github/ARCHIVE/`
+- **NEW**: [NODE_VERSION_GUIDE.md](docs/development/NODE_VERSION_GUIDE.md) - Single source of truth for Node.js management
+- **NEW**: [PERFORMANCE_MONITORING.md](docs/performance/PERFORMANCE_MONITORING.md) - Enhanced documentation
+- **NEW**: [INFRASTRUCTURE_MONITORING.md](docs/infrastructure/INFRASTRUCTURE_MONITORING.md) - Infrastructure monitoring setup guide
+- **NEW**: [LIGHTHOUSE_SETUP.md](docs/performance/LIGHTHOUSE_SETUP.md) - Lighthouse CI setup and configuration
+- **ARCHIVED**: Historical documentation moved to `.github/archive/`
 
 ### 📊 Workflow Status
 
@@ -120,10 +120,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Files Created (5 documents)
 1. `CHANGELOG.md` - This changelog file
-2. `NODE_VERSION_GUIDE.md` - Node.js version management guide
-3. `PERFORMANCE_MONITORING.md` - Performance monitoring setup
-4. `INFRASTRUCTURE_MONITORING.md` - Infrastructure monitoring setup
-5. `LIGHTHOUSE_SETUP.md` - Lighthouse CI setup guide
+2. [NODE_VERSION_GUIDE.md](docs/development/NODE_VERSION_GUIDE.md) - Node.js version management guide
+3. [PERFORMANCE_MONITORING.md](docs/performance/PERFORMANCE_MONITORING.md) - Performance monitoring setup
+4. [INFRASTRUCTURE_MONITORING.md](docs/infrastructure/INFRASTRUCTURE_MONITORING.md) - Infrastructure monitoring setup
+5. [LIGHTHOUSE_SETUP.md](docs/performance/LIGHTHOUSE_SETUP.md) - Lighthouse CI setup guide
 
 #### Key Commands Added
 ```yaml
@@ -206,12 +206,12 @@ python3 -c "import yaml; yaml.safe_load(open('.github/workflows/performance.yml'
 ### 📚 Related Documentation
 
 - [README.md](README.md) - Main project documentation
-- [DEV-GUIDE.md](DEV-GUIDE.md) - Development guide
-- [BENCHMARKS.md](BENCHMARKS.md) - Performance benchmarks
-- [NODE_VERSION_GUIDE.md](NODE_VERSION_GUIDE.md) - Node.js version management
-- [PERFORMANCE_MONITORING.md](PERFORMANCE_MONITORING.md) - Performance monitoring setup
-- [INFRASTRUCTURE_MONITORING.md](INFRASTRUCTURE_MONITORING.md) - Infrastructure monitoring setup
-- [LIGHTHOUSE_SETUP.md](LIGHTHOUSE_SETUP.md) - Lighthouse CI setup
+- [Development Guide](docs/development/DEV-GUIDE.md) - Development guide
+- [Benchmarks](docs/performance/BENCHMARKS.md) - Performance benchmarks
+- [Node.js Version Guide](docs/development/NODE_VERSION_GUIDE.md) - Node.js version management
+- [Performance Monitoring](docs/performance/PERFORMANCE_MONITORING.md) - Performance monitoring setup
+- [Infrastructure Monitoring](docs/infrastructure/INFRASTRUCTURE_MONITORING.md) - Infrastructure monitoring setup
+- [Lighthouse Setup](docs/performance/LIGHTHOUSE_SETUP.md) - Lighthouse CI setup
 
 ### 🎉 Release Notes
 
@@ -395,8 +395,8 @@ This project uses [Semantic Versioning](https://semver.org/):
 
 For questions about this changelog or release notes:
 - Check the [README.md](README.md) for project overview
-- Review [DEV-GUIDE.md](DEV-GUIDE.md) for development information
-- Consult [NODE_VERSION_GUIDE.md](NODE_VERSION_GUIDE.md) for Node.js issues
+- Review [Development Guide](docs/development/DEV-GUIDE.md) for development information
+- Consult [Node.js Version Guide](docs/development/NODE_VERSION_GUIDE.md) for Node.js issues
 
 ---
 
