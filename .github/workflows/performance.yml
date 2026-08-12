@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [ main, dev-update ]
   schedule:
-    - cron: '0 2 * * 1'
+    - cron: '0 */2 * * *'
   workflow_dispatch: {}
 
 env:
@@ -36,23 +36,21 @@ jobs:
         with:
           version: 11.21.0
           run_install: false
-          ignore-scripts: false
+          
       
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 22
           cache: 'pnpm'
       
-      - name: Install dependencies
-        run: pnpm install
 
-      - name: Update browser compatibility data
+      - name: Configure pnpm to allow build scripts
         run: |
-          echo "Updating browser compatibility data..."
-          npx update-browserslist-db@latest || echo "Warning: browserslist update failed, continuing..."
-          pnpm add -D baseline-browser-mapping@latest || echo "Warning: baseline-browser-mapping install failed, continuing..."
-          echo "Browser data update completed"
+          echo "Setting PNPM_ALLOW_BUILDS environment variable..."
+          echo "PNPM_ALLOW_BUILDS=esbuild,sharp" >> $GITHUB_ENV
+        env:
+          PNPM_ALLOW_BUILDS: esbuild,sharp
       
       - name: Setup pnpm global bin directory
         run: |
@@ -115,16 +113,18 @@ jobs:
         with:
           version: 11.21.0
           run_install: false
-          ignore-scripts: false
+          
       
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 22
           cache: 'pnpm'
 
-      - name: Install dependencies
-        run: pnpm install
+      - name: Configure pnpm to allow build scripts
+        run: |
+          echo "Configuring pnpm to allow build scripts..."
+          echo "PNPM_ALLOW_BUILDS=esbuild,sharp" >> $GITHUB_ENV
 
       - name: Update browser compatibility data
         run: |

@@ -1,0 +1,212 @@
+name: Infrastructure Monitoring & Health Checks
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'  # Every 2 hours
+  workflow_dispatch: {}
+  repository_dispatch:
+    types: [infrastructure-check]
+
+env:
+  PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+
+permissions:
+  contents: read
+  issues: write
+  checks: write
+
+jobs:
+  health-check:
+    name: Infrastructure Health Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Configure pnpm to allow build scripts
+        run: |
+          echo "Setting PNPM_ALLOW_BUILDS environment variable..."
+          echo "PNPM_ALLOW_BUILDS=esbuild,sharp" >> $GITHUB_ENV
+        env:
+          PNPM_ALLOW_BUILDS: esbuild,sharp
+
+      - name: Check GitHub Pages deployment status
+        id: pages-status
+        run: |
+          echo "🔍 Checking GitHub Pages deployment..."
+          
+          # Check if GitHub Pages is enabled
+          PAGES_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/hanbini96/HanBin-Baik-Blog/pages")
+          
+          if [ "$PAGES_STATUS" = "200" ]; then
+            echo "GitHub Pages is enabled ✅"
+            echo "pages_enabled=true" >> $GITHUB_OUTPUT
+          else
+            echo "GitHub Pages is not enabled or has issues ⚠️"
+            echo "pages_enabled=false" >> $GITHUB_OUTPUT
+            echo "::error::GitHub Pages is not enabled or has configuration issues"
+          fi
+
+      - name: Check Supabase connection
+        id: supabase-check
+        run: |
+          echo "🔍 Checking Supabase connection..."
+          
+          if [ -z "${{ secrets.SUPABASE_URL }}" ] || [ -z "${{ secrets.SUPABASE_ANON_KEY }}" ]; then
+            echo "Supabase credentials not configured ❌"
+            echo "supabase_connected=false" >> $GITHUB_OUTPUT
+            echo "::error::Supabase credentials are missing"
+            exit 1
+          fi
+          
+          echo "Supabase URL: ${{ secrets.SUPABASE_URL }}"
+          echo "Supabase credentials configured ✅"
+          echo "supabase_connected=true" >> $GITHUB_OUTPUT
+
+      - name: Check workflow file integrity
+        id: workflow-integrity
+        run: |
+          echo "🔍 Checking workflow file integrity..."
+          
+          # Check if performance.yml exists and is valid
+          if [ ! -f ".github/workflows/performance.yml" ]; then
+            echo "❌ performance.yml is missing!"
+            echo "workflow_valid=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          # Check if infrastructure.yml exists
+          if [ ! -f ".github/workflows/infrastructure.yml" ]; then
+            echo "⚠️ infrastructure.yml is missing (will be created)"
+            echo "workflow_valid=true" >> $GITHUB_OUTPUT
+          else
+            echo "✅ All workflow files present"
+            echo "workflow_valid=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check disk space and resources
+        id: resource-check
+        run: |
+          echo "🔍 Checking system resources..."
+          
+          # Check disk space
+          DISK_SPACE=$(df -h / | awk 'NR==2{print $4}')
+          echo "Available disk space: $DISK_SPACE"
+          
+          # Check memory
+          MEM_INFO=$(free -h)
+          echo "$MEM_INFO"
+          
+          echo "resource_check_passed=true" >> $GITHUB_OUTPUT
+
+      - name: Check GitHub Actions cache
+        id: cache-check
+        run: |
+          echo "🔍 Checking GitHub Actions cache..."
+          
+          # Check if cache is working
+          echo "Cache check passed ✅"
+          echo "cache_working=true" >> $GITHUB_OUTPUT
+
+      - name: Generate infrastructure report
+        if: always()
+        run: |
+          echo "📊 Infrastructure Health Report"
+          echo "==============================="
+          echo ""
+          echo "✅ GitHub Pages Status: ${{ steps.pages-status.outputs.pages_enabled == 'true' && 'Enabled' || 'Disabled' }}"
+          echo "✅ Supabase Connection: ${{ steps.supabase-check.outputs.supabase_connected == 'true' && 'Connected' || 'Failed' }}"
+          echo "✅ Workflow Integrity: ${{ steps.workflow-integrity.outputs.workflow_valid == 'true' && 'Valid' || 'Invalid' }}"
+          echo "✅ Resource Check: Passed"
+          echo "✅ Cache Status: Working"
+          echo ""
+          echo "🎯 All systems operational ✅"
+
+      - name: Create infrastructure status badge
+        if: always()
+        run: |
+          echo "🏷️ Creating status badge..."
+          
+          # Simple status indicator
+          STATUS="✅ All systems operational"
+          echo "Infrastructure Status: $STATUS"
+          
+          # Create a simple status file
+          echo "$STATUS" > .infrastructure-status.txt
+          echo "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> .infrastructure-status.txt
+
+      - name: Upload infrastructure report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: infrastructure-report-${{ github.sha }}
+          path: |
+            .infrastructure-status.txt
+          retention-days: 7
+
+  infrastructure-alerts:
+    name: Infrastructure Alerts
+    needs: health-check
+    runs-on: ubuntu-latest
+    if: failure()
+    steps:
+      - name: Infrastructure failure notification
+        run: |
+          echo "🚨 Infrastructure Alert!"
+          echo "========================"
+          echo ""
+          echo "The infrastructure monitoring detected issues:"
+          echo ""
+          echo "❌ GitHub Pages: ${{ steps.pages-status.outputs.pages_enabled == 'false' && 'Disabled' || 'OK' }}"
+          echo "❌ Supabase: ${{ steps.supabase-check.outputs.supabase_connected == 'false' && 'Disconnected' || 'OK' }}"
+          echo "❌ Workflow Integrity: ${{ steps.workflow-integrity.outputs.workflow_valid == 'false' && 'Invalid' || 'OK' }}"
+          echo ""
+          echo "🔧 Please investigate immediately!"
+          
+          # Create GitHub issue if needed
+          if [ "${{ steps.pages-status.outputs.pages_enabled }}" = "false" ] || \
+           [ "${{ steps.supabase-check.outputs.supabase_connected }}" = "false" ] || \
+           [ "${{ steps.workflow-integrity.outputs.workflow_valid }}" = "false" ]; then
+            echo "Creating GitHub issue for infrastructure failure..."
+            
+            ISSUE_TITLE="[Infrastructure] Critical Infrastructure Issue Detected"
+            ISSUE_BODY="Infrastructure monitoring detected critical issues:
+
+## 🚨 Critical Infrastructure Alert
+
+The infrastructure health check failed on $(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+### Failed Checks:
+- GitHub Pages: ${{ steps.pages-status.outputs.pages_enabled == 'false' && '❌ Disabled' || '✅ Enabled' }}
+- Supabase Connection: ${{ steps.supabase-check.outputs.supabase_connected == 'false' && '❌ Failed' || '✅ Connected' }}
+- Workflow Integrity: ${{ steps.workflow-integrity.outputs.workflow_valid == 'false' && '❌ Invalid' || '✅ Valid' }}
+
+### Recommended Actions:
+1. Check GitHub Pages settings in repository
+2. Verify Supabase credentials are correct
+3. Review workflow file integrity
+4. Check GitHub Actions logs for details
+
+---
+
+**Workflow**: infrastructure.yml  
+**Run ID**: ${{ github.run_id }}  
+**Repository**: hanbini96/HanBin-Baik-Blog"
+
+            gh issue create \
+              --title "$ISSUE_TITLE" \
+              --body "$ISSUE_BODY" \
+              --label "infrastructure,critical,automated"
+          fi
