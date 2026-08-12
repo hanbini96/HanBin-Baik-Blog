@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [ main, dev-update ]
   schedule:
-    - cron: '0 2 * * 1'
+    - cron: '0 */2 * * *'
   workflow_dispatch: {}
 
 env:

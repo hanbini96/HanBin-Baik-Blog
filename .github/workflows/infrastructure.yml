@@ -2,8 +2,7 @@ name: Infrastructure Monitoring & Health Checks
 
 on:
   schedule:
-    - cron: '0 */6 * * *'  # Every 6 hours
-    - cron: '0 2 * * *'    # Daily at 2 AM
+    - cron: '0 */2 * * *'  # Every 2 hours
   workflow_dispatch: {}
   repository_dispatch:
     types: [infrastructure-check]
