@@ -40,9 +40,12 @@ jobs:
           echo "Approving build scripts for esbuild and sharp..."
           pnpm approve-builds esbuild@0.25.12 esbuild@0.27.3 sharp@0.34.5 || echo "Build scripts approved or already approved"
 
-      - name: 📦 Install dependencies
+      - name: 📦 Configure pnpm to allow build scripts
         run: |
-          echo "Approving build scripts before installation..."
+          echo "Configuring pnpm to allow build scripts globally..."
+          pnpm config set ignore-scripts false
+          
+          echo "Approving specific build scripts..."
           pnpm approve-builds esbuild@0.25.12 esbuild@0.27.3 sharp@0.34.5 || echo "Build scripts approved or already approved"
           pnpm install --ignore-scripts=false
 

@@ -49,16 +49,19 @@ jobs:
           echo "Approving build scripts for esbuild and sharp..."
           pnpm approve-builds esbuild@0.25.12 esbuild@0.27.3 sharp@0.34.5 || echo "Build scripts approved or already approved"
 
-      - name: Install dependencies
+      - name: Configure pnpm to allow build scripts
         run: |
-          echo "Approving build scripts before installation..."
+          echo "Configuring pnpm to allow build scripts globally..."
+          pnpm config set ignore-scripts false
+          
+          echo "Approving specific build scripts..."
           pnpm approve-builds esbuild@0.25.12 esbuild@0.27.3 sharp@0.34.5 || echo "Build scripts approved or already approved"
           
           echo "Updating browser compatibility data..."
           npx update-browserslist-db@latest || echo "Warning: browserslist update failed, continuing..."
           pnpm add -D baseline-browser-mapping@latest || echo "Warning: baseline-browser-mapping install failed, continuing..."
           echo "Browser data update completed"
-          echo "Installing dependencies..."
+          echo "Installing dependencies with build scripts enabled..."
           pnpm install --ignore-scripts=false
       
       - name: Setup pnpm global bin directory
@@ -130,9 +133,12 @@ jobs:
           node-version: 22
           cache: 'pnpm'
 
-      - name: Install dependencies
+      - name: Configure pnpm to allow build scripts
         run: |
-          echo "Approving build scripts before installation..."
+          echo "Configuring pnpm to allow build scripts globally..."
+          pnpm config set ignore-scripts false
+          
+          echo "Approving specific build scripts..."
           pnpm approve-builds esbuild@0.25.12 esbuild@0.27.3 sharp@0.34.5 || echo "Build scripts approved or already approved"
           pnpm install --ignore-scripts=false
 
