@@ -184,8 +184,8 @@ jobs:
           
           # Create GitHub issue if needed
           if [ "${{ steps.pages-status.outputs.pages_enabled }}" = "false" ] || \
-             [ "${{ steps.supabase-check.outputs.supabase_connected }}" = "false" ] || \
-             [ "${{ steps.workflow-integrity.outputs.workflow_valid }}" = "false" ]; then
+           [ "${{ steps.supabase-check.outputs.supabase_connected }}" = "false" ] || \
+           [ "${{ steps.workflow-integrity.outputs.workflow_valid }}" = "false" ]; then
             echo "Creating GitHub issue for infrastructure failure..."
             
             ISSUE_TITLE="[Infrastructure] Critical Infrastructure Issue Detected"

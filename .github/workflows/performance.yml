@@ -56,6 +56,9 @@ jobs:
           echo "Verifying pnpm configuration..."
           pnpm config list | grep ignore-scripts || true
           
+          echo "Approving build scripts for required dependencies..."
+          pnpm approve-builds esbuild sharp
+          
           echo "Updating browser compatibility data..."
           npx update-browserslist-db@latest || echo "Warning: browserslist update failed, continuing..."
           pnpm add -D baseline-browser-mapping@latest || echo "Warning: baseline-browser-mapping install failed, continuing..."
@@ -139,7 +142,10 @@ jobs:
           echo "Configuring pnpm to allow build scripts globally..."
           pnpm config set ignore-scripts false
           
-          echo "Approving specific build scripts..."
+          echo "Approving build scripts for required dependencies..."
+          pnpm approve-builds esbuild sharp
+          
+          echo "Installing dependencies..."
           pnpm install
 
       - name: Update browser compatibility data
