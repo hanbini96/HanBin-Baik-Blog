@@ -51,11 +51,14 @@ jobs:
 
       - name: Configure pnpm to allow build scripts
         run: |
-          echo "Configuring pnpm to allow build scripts globally..."
+          echo "Setting PNPM_ALLOW_BUILDS environment variable..."
+          echo "PNPM_ALLOW_BUILDS=esbuild,sharp" >> $GITHUB_ENV
+          
+          echo "Configuring pnpm globally..."
           pnpm config set ignore-scripts false
           
-          echo "Approving specific build scripts..."
-          pnpm approve-builds esbuild@0.25.12 esbuild@0.27.3 sharp@0.34.5 || echo "Build scripts approved or already approved"
+          echo "Verifying pnpm configuration..."
+          pnpm config list | grep ignore-scripts || true
           
           echo "Updating browser compatibility data..."
           npx update-browserslist-db@latest || echo "Warning: browserslist update failed, continuing..."
@@ -63,6 +66,8 @@ jobs:
           echo "Browser data update completed"
           echo "Installing dependencies with build scripts enabled..."
           pnpm install --ignore-scripts=false
+        env:
+          PNPM_ALLOW_BUILDS: esbuild,sharp
       
       - name: Setup pnpm global bin directory
         run: |
