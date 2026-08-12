@@ -50,12 +50,12 @@ jobs:
           pnpm approve-builds esbuild@0.25.12 esbuild@0.27.3 sharp@0.34.5 || echo "Build scripts approved or already approved"
 
       - name: Install dependencies
-        run: pnpm install
         run: |
           echo "Updating browser compatibility data..."
           npx update-browserslist-db@latest || echo "Warning: browserslist update failed, continuing..."
           pnpm add -D baseline-browser-mapping@latest || echo "Warning: baseline-browser-mapping install failed, continuing..."
           echo "Browser data update completed"
+          pnpm install
       
       - name: Setup pnpm global bin directory
         run: |
