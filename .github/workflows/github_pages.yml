@@ -45,10 +45,10 @@ jobs:
           echo "PNPM_ALLOW_BUILDS=esbuild,sharp" >> $GITHUB_ENV
           
           echo "Configuring pnpm globally..."
-          pnpm config set ignore-scripts false
+          /home/runner/setup-pnpm/node_modules/.bin/pnpm config set ignore-scripts false
           
           echo "Installing dependencies with build scripts enabled..."
-          pnpm install
+          /home/runner/setup-pnpm/node_modules/.bin/pnpm install
         env:
           PNPM_ALLOW_BUILDS: esbuild,sharp
 
@@ -56,11 +56,11 @@ jobs:
         run: |
           echo "Updating browser compatibility data..."
           npx update-browserslist-db@latest || echo "Warning: browserslist update failed, continuing..."
-          pnpm add -D baseline-browser-mapping@latest || echo "Warning: baseline-browser-mapping install failed, continuing..."
+          /home/runner/setup-pnpm/node_modules/.bin/pnpm add -D baseline-browser-mapping@latest || echo "Warning: baseline-browser-mapping install failed, continuing..."
           echo "✅ Browser data update completed"
 
       - name: Build Astro site
-        run: pnpm build
+        run: /home/runner/setup-pnpm/node_modules/.bin/pnpm build
         env:
           NODE_OPTIONS: --max-old-space-size=4096
 
