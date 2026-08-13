@@ -90,11 +90,6 @@ jobs:
           echo "✅ pnpm is available: $(pnpm --version)"
           echo "✅ PATH configured with pnpm global bin directory"
 
-      - name: Approve build scripts for required packages
-        run: |
-          echo "✅ Approving build scripts for esbuild and sharp (pnpm 11+ security)..."
-          pnpm approve-builds esbuild sharp || echo "Build scripts already approved"
-
       - name: Install project dependencies
         run: pnpm install --frozen-lockfile
         env:
@@ -105,20 +100,22 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=4096
       
-      - name: Configure pnpm PATH for global binaries
+      - name: Setup pnpm global bin directory
         run: |
-          # Get pnpm's actual global bin directory
-          PNPM_GLOBAL_BIN=$(pnpm bin -g)
+          # Setup pnpm global bin directory properly
+          pnpm setup
+          
+          # Get and configure the global bin directory
+          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || echo "$HOME/.pnpm-global/bin")
           echo "PNPM_GLOBAL_BIN=$PNPM_GLOBAL_BIN" >> $GITHUB_ENV
           echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
           mkdir -p "$PNPM_GLOBAL_BIN"
           
-          # Verify pnpm is available (should be installed by pnpm/action-setup@v4)
+          # Verify pnpm is available
           if ! command -v pnpm &> /dev/null; then
             echo "❌ ERROR: pnpm is not available in PATH"
             echo "Current PATH: $PATH"
             which pnpm || true
-            echo "pnpm was supposed to be installed by pnpm/action-setup@v4"
             exit 1
           fi
           
@@ -186,19 +183,19 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'pnpm'
-      
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 11.21.0
           run_install: false
           ignore-off: true
-
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+      
       # CRITICAL FIX for pnpm 11+ security: Approve build scripts
       # pnpm 11+ ignores build scripts by default for security reasons
       # esbuild and sharp are required devDependencies for Astro builds
