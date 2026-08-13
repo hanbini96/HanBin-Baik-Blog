@@ -60,6 +60,8 @@ jobs:
           version: 11.21.0
           run_install: false
           ignore-off: true
+        env:
+          PNPM_HOME: /home/runner/.pnpm-global
       # CRITICAL FIX for pnpm 11+ security: Configure build scripts
       # pnpm 11+ ignores build scripts by default for security reasons
       # esbuild and sharp are required devDependencies for Astro builds
@@ -71,9 +73,11 @@ jobs:
 
       - name: Configure pnpm PATH and verify availability
         run: |
-          # Add pnpm to PATH for all subsequent steps
-          echo "$(pnpm bin)" >> $GITHUB_PATH
-          echo "$HOME/.pnpm-global/bin" >> $GITHUB_PATH
+          # Get pnpm's actual global bin directory
+          PNPM_GLOBAL_BIN=$(pnpm bin -g)
+          echo "PNPM_GLOBAL_BIN=$PNPM_GLOBAL_BIN" >> $GITHUB_ENV
+          echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
+          mkdir -p "$PNPM_GLOBAL_BIN"
           
           # Verify pnpm is available before use
           if ! command -v pnpm &> /dev/null; then
