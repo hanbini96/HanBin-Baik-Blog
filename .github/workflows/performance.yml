@@ -99,22 +99,20 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=4096
       
-      - name: Setup pnpm global bin directory
+      - name: Configure pnpm PATH for global binaries
         run: |
-          # Setup pnpm global bin directory properly
-          pnpm setup
-          
-          # Get and configure the global bin directory
-          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || echo "$HOME/.pnpm-global/bin")
+          # Configure pnpm global bin directory
+          PNPM_GLOBAL_BIN="$HOME/.pnpm-global/bin"
           echo "PNPM_GLOBAL_BIN=$PNPM_GLOBAL_BIN" >> $GITHUB_ENV
           echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
           mkdir -p "$PNPM_GLOBAL_BIN"
           
-          # Verify pnpm is available
+          # Verify pnpm is available (should be installed by pnpm/action-setup@v4)
           if ! command -v pnpm &> /dev/null; then
             echo "❌ ERROR: pnpm is not available in PATH"
             echo "Current PATH: $PATH"
             which pnpm || true
+            echo "pnpm was supposed to be installed by pnpm/action-setup@v4"
             exit 1
           fi
           
