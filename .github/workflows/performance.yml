@@ -55,12 +55,7 @@ jobs:
           run_install: false
           ignore-off: true
 
-      - name: Set up Node.js with pnpm cache
-=======
-          ignore-off: true
-      
       - name: Set up Node.js
->>>>>>> origin/main
         uses: actions/setup-node@v4
         with:
           node-version: 22
