@@ -70,7 +70,7 @@ jobs:
       - name: Approve build scripts for required packages
         run: |
           echo "✅ Approving build scripts for esbuild and sharp (pnpm 11+ security)..."
-          pnpm approve-builds esbuild@0.25.12 esbuild@0.27.3 sharp@0.34.5 || echo "Build scripts already approved"
+          pnpm approve-builds esbuild sharp || echo "Build scripts already approved"
 
       - name: Configure pnpm PATH and verify availability
         run: |
