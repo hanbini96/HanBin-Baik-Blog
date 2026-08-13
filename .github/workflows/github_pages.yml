@@ -1,7 +1,7 @@
 name: Deploy to GitHub Pages
 on:
   push:
-    branches: [ main ]
+    branches: [ main, dev-update ]
   pull_request:
     branches: [ main, dev-update ]
   workflow_dispatch: {}
@@ -19,6 +19,7 @@ jobs:
     env:
       PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      PORT: 4321
       LAST_BUILD: ${{ github.sha }}
       LAST_COMMIT: ${{ github.event.head_commit.message }}
       BUILD_TIMESTAMP: ${{ github.event.repository.updated_at }}
@@ -33,7 +34,8 @@ jobs:
         with:
           version: 11.21.0
           run_install: false
-          ignore-off: true
+        env:
+          PNPM_HOME: /home/runner/.pnpm-global
       
       - name: Set up Node.js with pnpm cache
         uses: actions/setup-node@v4

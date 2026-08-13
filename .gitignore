@@ -58,3 +58,7 @@ supabase/functions/.netlify/
 *.pid
 *.seed
 *.sqlite
+
+# === Development Documentation (Issue-specific)
+.github/ISSUES/
+docs/troubleshooting/
