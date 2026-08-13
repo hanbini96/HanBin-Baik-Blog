@@ -8,6 +8,8 @@ on:
   schedule:
     - cron: '0 */2 * * *'
   workflow_dispatch: {}
+  repository_dispatch:
+    types: [workflow-trigger]
 
 # Critical: PNPM 11+ requires build scripts to be approved for security
 # esbuild and sharp are required devDependencies for Astro builds
@@ -44,13 +46,8 @@ jobs:
           version: 11.21.0
           run_install: true
           standalone: true
-      
-      - name: Set up Node.js with pnpm cache
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'pnpm'
-          cache-dependency-path: '**/pnpm-lock.yaml'
+        env:
+          PNPM_HOME: /home/runner/.pnpm-global
       
       - name: Configure PATH and verify pnpm availability
         id: path-config
@@ -95,6 +92,13 @@ jobs:
           
           pnpm --version
           echo "✅ pnpm verified: $(pnpm --version)"
+      
+      - name: Set up Node.js with pnpm cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+          cache-dependency-path: '**/pnpm-lock.yaml'
       
       # CRITICAL FIX: pnpm 11+ ignores build scripts by default for security
       # esbuild and sharp are required devDependencies for Astro builds

@@ -9,7 +9,7 @@ on:
     - cron: '0 */2 * * *'  # Every 2 hours
   workflow_dispatch:
   repository_dispatch:
-    types: [infrastructure-check]
+    types: [infrastructure-check, workflow-trigger]
 
 env:
   PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -37,12 +37,8 @@ jobs:
           version: 11.21.0
           run_install: true
           standalone: true
-
-      - name: Set up Node.js with pnpm cache
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'pnpm'
+        env:
+          PNPM_HOME: /home/runner/.pnpm-global
 
       - name: Configure PATH and verify pnpm availability
         id: path-config
@@ -83,6 +79,12 @@ jobs:
           
           pnpm --version
           echo "✅ pnpm verified: $(pnpm --version)"
+      
+      - name: Set up Node.js with pnpm cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
       
       # CRITICAL FIX: pnpm 11+ ignores build scripts by default for security
       # esbuild and sharp are required for Astro builds
