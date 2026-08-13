@@ -67,13 +67,14 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: '**/pnpm-lock.yaml'
       
-      # CRITICAL FIX for pnpm 11+ security: Approve build scripts before install
+      # CRITICAL FIX for pnpm 11+ security: Configure build scripts
       # pnpm 11+ ignores build scripts by default for security reasons
       # esbuild and sharp are required devDependencies for Astro builds
-      - name: Approve build scripts for required packages
+      - name: Configure pnpm build scripts (pnpm 11+ compatible)
         run: |
-          echo "✅ Approving build scripts for esbuild and sharp (pnpm 11+ security)..."
-          pnpm approve-builds esbuild@0.25.12 esbuild@0.27.3 sharp@0.34.5 || echo "Build scripts already approved"
+          echo "PNPM_ALLOW_BUILDS=esbuild,sharp" >> $GITHUB_ENV
+        env:
+          PNPM_ALLOW_BUILDS: esbuild,sharp
 
       - name: Install project dependencies
         run: pnpm install --frozen-lockfile
@@ -181,11 +182,12 @@ jobs:
           node-version: 22
           cache: 'pnpm'
 
-      # CRITICAL FIX for pnpm 11+ security: Approve build scripts before install
-      - name: Approve build scripts for required packages
+      # CRITICAL FIX for pnpm 11+ security: Configure build scripts
+      - name: Configure pnpm build scripts (pnpm 11+ compatible)
         run: |
-          echo "✅ Approving build scripts for esbuild and sharp (pnpm 11+ security)..."
-          pnpm approve-builds esbuild@0.25.12 esbuild@0.27.3 sharp@0.34.5 || echo "Build scripts already approved"
+          echo "PNPM_ALLOW_BUILDS=esbuild,sharp" >> $GITHUB_ENV
+        env:
+          PNPM_ALLOW_BUILDS: esbuild,sharp
 
       - name: Update browser compatibility data
         run: |
