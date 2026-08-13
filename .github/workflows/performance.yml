@@ -117,10 +117,87 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=4096
       
+      - name: Configure PATH for all subsequent steps
+        run: |
+          # Add pnpm global bin to PATH
+          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || echo "$HOME/.pnpm-global/bin")
+          echo "PNPM_GLOBAL_BIN=$PNPM_GLOBAL_BIN" >> $GITHUB_ENV
+          echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
+          echo "$HOME/.pnpm-global/bin" >> $GITHUB_PATH
+          
+          # Add node_modules/.bin to PATH
+          echo "$(pwd)/node_modules/.bin" >> $GITHUB_PATH
+          
+          # Add current directory bin to PATH
+          echo "$(pwd)/bin" >> $GITHUB_PATH
+          
+          # Verify PATH configuration
+          echo "🔧 PATH Configuration:"
+          echo "Current PATH: $PATH"
+          echo "PNPM Global Bin: $PNPM_GLOBAL_BIN"
+          
+          # Verify critical commands
+          which pnpm && pnpm --version || { echo "❌ pnpm not found"; exit 1; }
+          which astro && astro --version || { echo "❌ astro not found"; exit 1; }
+          
+          echo "✅ PATH configured successfully for all steps"
+
       - name: Build Astro site
         run: pnpm build
         env:
           NODE_OPTIONS: --max-old-space-size=4096
+
+      - name: Start Astro server for Lighthouse audits
+        id: server-start
+        run: |
+          echo "🚀 Starting Astro server for performance testing..."
+          
+          # Start server in background
+          pnpm preview > /tmp/astro-server.log 2>&1 &
+          SERVER_PID=$!
+          echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
+          
+          # Wait for server to be ready (up to 60 seconds)
+          echo "⏳ Waiting for server to start on port 3000..."
+          TIMEOUT=60
+          START_TIME=$(date +%s)
+          
+          while true; do
+            # Check if server is responding
+            if curl -s http://localhost:3000 >/dev/null 2>&1; then
+              echo "✅ Server started successfully on port 3000"
+              break
+            fi
+            
+            # Check timeout
+            CURRENT_TIME=$(date +%s)
+            ELAPSED=$((CURRENT_TIME - START_TIME))
+            
+            if [ $ELAPSED -ge $TIMEOUT ]; then
+              echo "❌ ERROR: Server failed to start within $TIMEOUT seconds"
+              echo "Last 20 lines of server log:"
+              tail -20 /tmp/astro-server.log
+              kill $SERVER_PID 2>/dev/null || true
+              exit 1
+            fi
+            
+            # Wait and retry
+            sleep 2
+            echo "⏳ Still waiting... ($ELAPSED/$TIMEOUT seconds)"
+          done
+          
+          # Verify server is running
+          SERVER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/)
+          if [ "$SERVER_STATUS" != "200" ]; then
+            echo "❌ ERROR: Server returned status $SERVER_STATUS"
+            echo "Server log:"
+            cat /tmp/astro-server.log
+            kill $SERVER_PID 2>/dev/null || true
+            exit 1
+          fi
+          
+          echo "✅ Server is responding correctly (HTTP 200)"
+          echo "📊 Server PID: $SERVER_PID"
       
       - name: Setup pnpm global bin directory
         run: |
@@ -178,13 +255,37 @@ jobs:
         continue-on-error: true
         with:
           urls: |
-            https://hanbini96.github.io/HanBin-Baik-Blog/
-            https://hanbini96.github.io/HanBin-Baik-Blog/blog
-            https://hanbini96.github.io/HanBin-Baik-Blog/about
+            http://localhost:3000/
+            http://localhost:3000/blog
+            http://localhost:3000/about
           uploadArtifacts: true
           artifactName: "lighthouse-results"
           temporaryPublicStorage: true
           configPath: ./lighthouserc.js
+
+      - name: Stop Astro server
+        if: always()
+        run: |
+          if [ -n "${{ env.SERVER_PID }}" ]; then
+            echo "🛑 Stopping Astro server..."
+            kill ${{ env.SERVER_PID }} 2>/dev/null || true
+            
+            # Additional cleanup
+            sleep 2
+            pkill -f "pnpm preview" 2>/dev/null || true
+            pkill -f "astro preview" 2>/dev/null || true
+            
+            # Verify server is stopped
+            if curl -s http://localhost:3000 >/dev/null 2>&1; then
+              echo "⚠️ Server may still be running, attempting force kill"
+              pkill -9 -f "pnpm preview" 2>/dev/null || true
+              pkill -9 -f "astro preview" 2>/dev/null || true
+            fi
+            
+            echo "✅ Server stopped successfully"
+          else
+            echo "ℹ️ No server PID found, skipping cleanup"
+          fi
 
       - name: Upload Lighthouse results as artifact
         uses: actions/upload-artifact@v4

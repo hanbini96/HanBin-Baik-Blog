@@ -29,8 +29,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ❌ **HIGH**: Node.js 24 incompatibilities causing random workflow failures
 - ❌ **HIGH**: Missing infrastructure monitoring and health checks
 - ❌ **MEDIUM**: Lighthouse CI workflow failures when artifacts were missing
+- ❌ **CRITICAL**: Performance.yml workflow failing due to missing server start (NEW - August 13, 2026)
+  - Lighthouse CI requires site to be served before audits can run
+  - Added server start/stop steps to workflow
+  - Updated URLs to use local server (http://localhost:3000/)
+  - Fixed PATH configuration for all steps
+  - Added comprehensive error handling and timeouts
+- ❌ **HIGH**: Infrastructure.yml workflow failures due to missing error logging (NEW - August 13, 2026)
+  - Added detailed debug logging to all steps
+  - Implemented fallback mechanisms for external API calls
+  - Added PATH verification and validation
+  - Improved error messages and failure detection
 - ❌ **LOW**: GitHub Pages deployment workflow issues
 - ❌ **LOW**: Database migration workflow issues
+
+### Added
+- 📋 **NEW**: WORKFLOW_ISSUES_ASSESSMENT.md - Comprehensive workflow assessment report
+- 📋 **NEW**: WORKFLOW_FIX_PLAN.md - Step-by-step fix implementation plan
+- 📋 **NEW**: Enhanced error logging in performance.yml and infrastructure.yml workflows
+- 📋 **NEW**: Debug mode for infrastructure monitoring workflow
+- 📋 **NEW**: Detailed documentation for workflow failure patterns and solutions
 
 ### Removed
 - ⚠️ **TEMPORARY**: Duplicate and historical summary documentation files
