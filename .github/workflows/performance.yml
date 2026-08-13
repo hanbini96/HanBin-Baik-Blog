@@ -76,6 +76,24 @@ jobs:
         env:
           PNPM_ALLOW_BUILDS: esbuild,sharp
 
+      - name: Configure pnpm PATH and verify availability
+        run: |
+          # Add pnpm to PATH for all subsequent steps
+          echo "$(pnpm bin)" >> $GITHUB_PATH
+          echo "$HOME/.pnpm-global/bin" >> $GITHUB_PATH
+          
+          # Verify pnpm is available before use
+          if ! command -v pnpm &> /dev/null; then
+            echo "❌ ERROR: pnpm is not available in PATH"
+            echo "Current PATH: $PATH"
+            which pnpm || true
+            exit 1
+          fi
+          
+          pnpm --version
+          echo "✅ pnpm is available: $(pnpm --version)"
+          echo "✅ PATH configured with pnpm global bin directory"
+
       - name: Install project dependencies
         run: pnpm install --frozen-lockfile
         env:
