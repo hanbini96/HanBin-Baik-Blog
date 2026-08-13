@@ -33,7 +33,6 @@ jobs:
         with:
           version: 11.21.0
           run_install: false
-          ignore-off: true
         env:
           PNPM_HOME: /home/runner/.pnpm-global
       

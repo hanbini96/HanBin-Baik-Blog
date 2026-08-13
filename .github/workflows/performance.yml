@@ -46,87 +46,179 @@ jobs:
         with:
           fetch-depth: 0
       
-      - name: Set up Node.js
+      - name: Set up pnpm with global bin directory
+        uses: pnpm/action-setup@v4
+        id: pnpm-setup
+        with:
+          version: 11.21.0
+          run_install: true  # Install dependencies AND make pnpm available globally
+          standalone: true    # Make pnpm available immediately without Node.js setup
+        env:
+          PNPM_HOME: /home/runner/.pnpm-global  # Use persistent path for consistency
+      
+      - name: Set up Node.js with pnpm cache
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'pnpm'
           cache-dependency-path: '**/pnpm-lock.yaml'
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        id: pnpm-setup
-        with:
-          version: 11.21.0
-          run_install: false
-          ignore-off: true
-        env:
-          PNPM_HOME: /home/runner/.pnpm-global
+      
+      - name: Final pnpm setup
+        run: pnpm setup
+      
+      - name: Configure PATH for global binaries
+        id: path-config
+        run: |
+          # Use robust fallback method with multiple fallbacks
+          # Fallback chain: pnpm config → hardcoded path → environment variable
+          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || \
+                           echo "$HOME/.pnpm-global/bin")
+          
+          echo "PNPM_GLOBAL_BIN=$PNPM_GLOBAL_BIN" >> $GITHUB_ENV
+          echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
+          
+          # Add additional critical paths
+          echo "$HOME/.pnpm-global/bin" >> $GITHUB_PATH
+          echo "$(pwd)/node_modules/.bin" >> $GITHUB_PATH
+          echo "$(pwd)/bin" >> $GITHUB_PATH
+          
+          # Create directory if it doesn't exist
+          mkdir -p "$PNPM_GLOBAL_BIN"
+          
+          # Comprehensive PATH verification
+          echo "🔧 PATH Configuration:"
+          echo "PNPM Global Bin: $PNPM_GLOBAL_BIN"
+          echo "Current PATH: $PATH"
+          
+          # Verify critical commands are available
+          if ! command -v pnpm &> /dev/null; then
+            echo "❌ ERROR: pnpm is not available in PATH"
+            echo "Available commands: $(compgen -c | grep -E 'pnpm|node|npm' | head -20)"
+            echo "PNPM_HOME env: $PNPM_HOME"
+            pnpm config get global-bin-dir || true
+            which pnpm || true
+            echo "🔧 PATH contents:"
+            echo "$PATH" | tr ':' '\n'
+            exit 1
+          fi
+          
+          if ! command -v astro &> /dev/null; then
+            echo "⚠️ WARNING: astro not found (may be expected before install)"
+          fi
+          
+          pnpm --version
+          echo "✅ PATH configured successfully: $PNPM_GLOBAL_BIN added to PATH"
       # CRITICAL FIX for pnpm 11+ security: Configure build scripts
       # pnpm 11+ ignores build scripts by default for security reasons
       # esbuild and sharp are required devDependencies for Astro builds
       # Must use pnpm approve-builds command (PNPM_ALLOW_BUILDS env var doesn't work in pnpm 11+)
+      # This MUST come AFTER PATH configuration
       - name: Approve build scripts for required packages
         run: |
           echo "✅ Approving build scripts for esbuild and sharp (pnpm 11+ security)..."
           pnpm approve-builds esbuild sharp || echo "Build scripts already approved"
-
-      - name: Configure pnpm PATH and verify availability
-        run: |
-          # Get pnpm's actual global bin directory
-          PNPM_GLOBAL_BIN=$(pnpm bin -g)
-          echo "PNPM_GLOBAL_BIN=$PNPM_GLOBAL_BIN" >> $GITHUB_ENV
-          echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
-          mkdir -p "$PNPM_GLOBAL_BIN"
-          
-          # Verify pnpm is available before use
-          if ! command -v pnpm &> /dev/null; then
-            echo "❌ ERROR: pnpm is not available in PATH"
-            echo "Current PATH: $PATH"
-            which pnpm || true
-            exit 1
-          fi
-          
-          pnpm --version
-          echo "✅ pnpm is available: $(pnpm --version)"
-          echo "✅ PATH configured with pnpm global bin directory"
 
       - name: Install project dependencies
         run: pnpm install --frozen-lockfile
         env:
           NODE_OPTIONS: --max-old-space-size=4096
       
+      - name: Verify pnpm installation after dependencies
+        run: |
+          # Verify pnpm is still available after dependency installation
+          if ! command -v pnpm &> /dev/null; then
+            echo "❌ ERROR: pnpm not available after dependency installation"
+            exit 1
+          fi
+          pnpm --version
+          echo "✅ pnpm verified after dependency installation"
+      
+      - name: Configure PATH for all subsequent steps
+        run: |
+          # Add pnpm global bin to PATH
+          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || echo "$HOME/.pnpm-global/bin")
+          echo "PNPM_GLOBAL_BIN=$PNPM_GLOBAL_BIN" >> $GITHUB_ENV
+          echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
+          echo "$HOME/.pnpm-global/bin" >> $GITHUB_PATH
+          
+          # Add node_modules/.bin to PATH
+          echo "$(pwd)/node_modules/.bin" >> $GITHUB_PATH
+          
+          # Add current directory bin to PATH
+          echo "$(pwd)/bin" >> $GITHUB_PATH
+          
+          # Verify PATH configuration
+          echo "🔧 PATH Configuration:"
+          echo "Current PATH: $PATH"
+          echo "PNPM Global Bin: $PNPM_GLOBAL_BIN"
+          
+          # Verify critical commands
+          which pnpm && pnpm --version || { echo "❌ pnpm not found"; exit 1; }
+          which astro && astro --version || { echo "❌ astro not found"; exit 1; }
+          
+          echo "✅ PATH configured successfully for all steps"
+
       - name: Build Astro site
         run: pnpm build
         env:
           NODE_OPTIONS: --max-old-space-size=4096
-      
-      - name: Setup pnpm global bin directory
+
+      - name: Start Astro server for Lighthouse audits
+        id: server-start
         run: |
-          # Setup pnpm global bin directory properly
-          pnpm setup
+          echo "🚀 Starting Astro server for performance testing..."
           
-          # Get and configure the global bin directory
-          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || echo "$HOME/.pnpm-global/bin")
-          echo "PNPM_GLOBAL_BIN=$PNPM_GLOBAL_BIN" >> $GITHUB_ENV
-          echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
-          mkdir -p "$PNPM_GLOBAL_BIN"
+          # Start server in background
+          pnpm preview > /tmp/astro-server.log 2>&1 &
+          SERVER_PID=$!
+          echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
           
-          # Verify pnpm is available
-          if ! command -v pnpm &> /dev/null; then
-            echo "❌ ERROR: pnpm is not available in PATH"
-            echo "Current PATH: $PATH"
-            which pnpm || true
+          # Wait for server to be ready (up to 60 seconds)
+          echo "⏳ Waiting for server to start on port 3000..."
+          TIMEOUT=60
+          START_TIME=$(date +%s)
+          
+          while true; do
+            # Check if server is responding
+            if curl -s http://localhost:3000 >/dev/null 2>&1; then
+              echo "✅ Server started successfully on port 3000"
+              break
+            fi
+            
+            # Check timeout
+            CURRENT_TIME=$(date +%s)
+            ELAPSED=$((CURRENT_TIME - START_TIME))
+            
+            if [ $ELAPSED -ge $TIMEOUT ]; then
+              echo "❌ ERROR: Server failed to start within $TIMEOUT seconds"
+              echo "Last 20 lines of server log:"
+              tail -20 /tmp/astro-server.log
+              kill $SERVER_PID 2>/dev/null || true
+              exit 1
+            fi
+            
+            # Wait and retry
+            sleep 2
+            echo "⏳ Still waiting... ($ELAPSED/$TIMEOUT seconds)"
+          done
+          
+          # Verify server is running
+          SERVER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/)
+          if [ "$SERVER_STATUS" != "200" ]; then
+            echo "❌ ERROR: Server returned status $SERVER_STATUS"
+            echo "Server log:"
+            cat /tmp/astro-server.log
+            kill $SERVER_PID 2>/dev/null || true
             exit 1
           fi
           
-          pnpm --version
-          echo "✅ pnpm is available: $(pnpm --version)"
-          echo "✅ PATH configured with pnpm global bin directory"
-
+          echo "✅ Server is responding correctly (HTTP 200)"
+          echo "📊 Server PID: $SERVER_PID"
+      
       - name: Install Lighthouse CLI globally
         run: |
           # Install global dependencies using pnpm (not npm) for consistency
+          echo "📦 Installing global dependencies with pnpm..."
           pnpm add -g lighthouse @lhci/cli
           
           # Verify installations with proper error handling
@@ -134,6 +226,7 @@ jobs:
             echo "❌ ERROR: lhci not found after installation"
             echo "PATH is: $PATH"
             which lhci || true
+            echo "🔧 Available commands: $(compgen -c | grep -E 'lhci|lighthouse|pnpm' | head -20)"
             exit 1
           fi
           
@@ -141,9 +234,11 @@ jobs:
             echo "❌ ERROR: lighthouse not found after installation"
             echo "PATH is: $PATH"
             which lighthouse || true
+            echo "🔧 Available commands: $(compgen -c | grep -E 'lhci|lighthouse|pnpm' | head -20)"
             exit 1
           fi
           
+          echo "✅ Lighthouse CLI installed successfully"
           lhci --version
           lighthouse --version
       
@@ -153,13 +248,37 @@ jobs:
         continue-on-error: true
         with:
           urls: |
-            https://hanbini96.github.io/HanBin-Baik-Blog/
-            https://hanbini96.github.io/HanBin-Baik-Blog/blog
-            https://hanbini96.github.io/HanBin-Baik-Blog/about
+            http://localhost:3000/
+            http://localhost:3000/blog
+            http://localhost:3000/about
           uploadArtifacts: true
           artifactName: "lighthouse-results"
           temporaryPublicStorage: true
           configPath: ./lighthouserc.js
+
+      - name: Stop Astro server
+        if: always()
+        run: |
+          if [ -n "${{ env.SERVER_PID }}" ]; then
+            echo "🛑 Stopping Astro server..."
+            kill ${{ env.SERVER_PID }} 2>/dev/null || true
+            
+            # Additional cleanup
+            sleep 2
+            pkill -f "pnpm preview" 2>/dev/null || true
+            pkill -f "astro preview" 2>/dev/null || true
+            
+            # Verify server is stopped
+            if curl -s http://localhost:3000 >/dev/null 2>&1; then
+              echo "⚠️ Server may still be running, attempting force kill"
+              pkill -9 -f "pnpm preview" 2>/dev/null || true
+              pkill -9 -f "astro preview" 2>/dev/null || true
+            fi
+            
+            echo "✅ Server stopped successfully"
+          else
+            echo "ℹ️ No server PID found, skipping cleanup"
+          fi
 
       - name: Upload Lighthouse results as artifact
         uses: actions/upload-artifact@v4
@@ -184,18 +303,32 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: Set up pnpm
+      - name: Set up pnpm with global bin directory
         uses: pnpm/action-setup@v4
         with:
           version: 11.21.0
-          run_install: false
-          ignore-off: true
+          run_install: true
+          standalone: true    # Make pnpm available immediately
+        env:
+          PNPM_HOME: /home/runner/.pnpm-global
       
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'pnpm'
+      - name: Configure PATH for global binaries
+        run: |
+          # Configure PATH consistently with lighthouse job
+          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || echo "/home/runner/.pnpm-global/bin")
+          echo "PNPM_GLOBAL_BIN=$PNPM_GLOBAL_BIN" >> $GITHUB_ENV
+          echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
+          mkdir -p "$PNPM_GLOBAL_BIN"
+          
+          # Verify pnpm is available
+          if ! command -v pnpm &> /dev/null; then
+            echo "❌ ERROR: pnpm is not available in PATH"
+            echo "Current PATH: $PATH"
+            which pnpm || true
+            exit 1
+          fi
+          
+          pnpm --version
       
       # CRITICAL FIX for pnpm 11+ security: Approve build scripts
       # pnpm 11+ ignores build scripts by default for security reasons
@@ -212,14 +345,6 @@ jobs:
           npx update-browserslist-db@latest || echo "Warning: browserslist update failed, continuing..."
           pnpm add -D baseline-browser-mapping@latest || echo "Warning: baseline-browser-mapping install failed, continuing..."
           echo "Browser data update completed"
-      
-      - name: Setup pnpm global bin directory
-        run: |
-          pnpm setup
-          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || echo "$HOME/.pnpm-global/bin")
-          echo "PNPM_GLOBAL_BIN=$PNPM_GLOBAL_BIN" >> $GITHUB_ENV
-          echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
-          mkdir -p "$PNPM_GLOBAL_BIN"
       
       - name: Create performance history directory
         run: mkdir -p .performance-history
