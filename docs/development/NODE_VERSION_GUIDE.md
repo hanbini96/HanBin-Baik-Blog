@@ -149,6 +149,34 @@ grep "node-version:" .github/workflows/*.yml
 
 ---
 
+## ⚠️ CRITICAL: Tilde Expansion in GitHub Actions
+
+### 🚨 Important Note for GitHub Actions Configuration
+
+**In GitHub Actions, the tilde (`~`) character does NOT expand** to the home directory, unlike in local shell environments.
+
+**Incorrect Configuration** (will cause failures):
+```ini
+# .npmrc file
+global-bin-dir=~/.pnpm-global/bin
+```
+
+**Correct Configuration** (required for GitHub Actions):
+```ini
+# .npmrc file
+global-bin-dir=/home/runner/.pnpm-global/bin
+```
+
+**Why This Matters**:
+- GitHub Actions runner does NOT perform shell expansion
+- pnpm returns the literal string `~/.pnpm-global/bin`
+- This creates invalid paths like `/home/runner/setup-pnpm/node_modules/.bin/bin`
+- Results in "pnpm: command not found" or path errors
+
+**Fix Applied**: Updated `.npmrc` to use absolute path (Issue #99)
+
+---
+
 ## 🛠️ Setup Instructions
 
 ### For New Contributors
