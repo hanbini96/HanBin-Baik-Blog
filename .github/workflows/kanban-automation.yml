@@ -33,7 +33,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'pnpm'
           cache-dependency-path: '**/pnpm-lock.yaml'
 
       # CRITICAL FIX for pnpm 11+ security: Approve build scripts before install
