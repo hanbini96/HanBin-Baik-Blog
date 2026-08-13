@@ -39,9 +39,6 @@ jobs:
       # CRITICAL FIX for pnpm 11+ security: Configure build scripts
       - name: Configure pnpm build scripts (pnpm 11+ compatible)
         run: |
-          echo "PNPM_ALLOW_BUILDS=esbuild,sharp" >> $GITHUB_ENV
-        env:
-          PNPM_ALLOW_BUILDS: esbuild,sharp
 
       - name: Configure pnpm PATH and verify availability
         run: |
@@ -62,10 +59,12 @@ jobs:
           pnpm --version
           echo "✅ pnpm is available: $(pnpm --version)"
           
-          # Configure pnpm build scripts (pnpm 11+ compatible)
-          echo "PNPM_ALLOW_BUILDS=esbuild,sharp" >> $GITHUB_ENV
-        env:
-          PNPM_ALLOW_BUILDS: esbuild,sharp
+          # CRITICAL FIX for pnpm 11+ security: Approve build scripts
+          # pnpm 11+ ignores build scripts by default for security reasons
+          # esbuild and sharp are required for Astro builds
+          # Must use pnpm approve-builds command (PNPM_ALLOW_BUILDS env var does not work in pnpm 11+)
+          echo "✅ Approving build scripts for esbuild and sharp (pnpm 11+ security)..."
+          pnpm approve-builds esbuild sharp || echo "Build scripts already approved"
 
       - name: Check GitHub Pages deployment status
         id: pages-status
