@@ -47,26 +47,31 @@ jobs:
       - name: Configure PATH and verify pnpm availability
         id: path-config
         run: |
-          # Standardize PNPM_HOME location
+          # Standardize PNPM_HOME location to persistent directory
           echo "PNPM_HOME=/home/runner/.pnpm-global" >> $GITHUB_ENV
           
-          # Get pnpm's actual global bin directory
-          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || echo "$HOME/.pnpm-global/bin")
+          # Get pnpm's global bin directory with MULTIPLE FALLBACKS
+          # Pattern from NODE_VERSION_GUIDE.md Issue #95 & #99 fixes
+          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || \
+                          pnpm bin -g 2>/dev/null || \
+                          echo "/home/runner/.pnpm-global/bin")
           echo "PNPM_GLOBAL_BIN=$PNPM_GLOBAL_BIN" >> $GITHUB_ENV
           
-          # Add critical paths to PATH (simplified and consolidated)
+          # Add critical paths to PATH with MULTIPLE FALLBACKS
+          # Pattern from NODE_VERSION_GUIDE.md Troubleshooting Issue 3b
           echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
+          echo "$HOME/.pnpm-global/bin" >> $GITHUB_PATH
           echo "$(pwd)/node_modules/.bin" >> $GITHUB_PATH
           
           # Create directories if they don't exist
           mkdir -p "$PNPM_GLOBAL_BIN"
           
-          # Debug output for troubleshooting
+          # Debug output for troubleshooting (from PR #104)
           echo "🔧 PATH Configuration:"
           echo "PNPM_HOME: $PNPM_HOME"
           echo "PNPM_GLOBAL_BIN: $PNPM_GLOBAL_BIN"
           
-          # Verify pnpm is available BEFORE proceeding
+          # Verify pnpm is available BEFORE proceeding (from PR #104)
           if ! command -v pnpm &> /dev/null; then
             echo "❌ CRITICAL ERROR: pnpm is not available in PATH"
             echo "Current PATH: $PATH"
