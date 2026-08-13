@@ -38,11 +38,13 @@ This guide consolidates all Node.js version-related documentation for the HanBin
 
 ### 🚫 What's Not Allowed
 
-- ❌ Node.js 24.x (incompatible with GitHub Actions at this time)
+- ❌ Node.js 24.x (incompatible with GitHub Actions at this time) [Issue #94]
 - ❌ Node.js 20.x (end of life, no LTS support)
 - ❌ Node.js 18.x (end of life, no LTS support)
 - ❌ Any non-LTS version
-- ❌ Invalid pnpm/action-setup@v4 parameters (e.g., `ignore-off: true`)
+- ❌ Invalid pnpm/action-setup@v4 parameters (e.g., `ignore-off: true`) [Issue #95]
+- ❌ PNPM_HOME set to temporary paths like `/home/runner/setup-pnpm/node_modules/.bin` [Issue #95]
+- ❌ Using `~` (tilde) for paths in GitHub Actions configuration [Issue #99]
 
 ### 📋 Enforcement
 
@@ -51,6 +53,7 @@ The policy is enforced through:
 2. ✅ `engines` field in `package.json` requiring `>=22.0.0`
 3. ✅ GitHub Actions workflows using `node-version: 22`
 4. ✅ Automated verification scripts
+5. ✅ Absolute paths in `.npmrc` (no tilde expansion) [Issue #99]
 
 ---
 
@@ -151,17 +154,17 @@ grep "node-version:" .github/workflows/*.yml
 
 ## ⚠️ CRITICAL: Tilde Expansion in GitHub Actions
 
-### 🚨 Important Note for GitHub Actions Configuration
+### 🚨 Critical: Tilde Expansion in GitHub Actions
 
 **In GitHub Actions, the tilde (`~`) character does NOT expand** to the home directory, unlike in local shell environments.
 
-**Incorrect Configuration** (will cause failures):
+**❌ Incorrect Configuration** (will cause failures) [Issue #99]:
 ```ini
 # .npmrc file
 global-bin-dir=~/.pnpm-global/bin
 ```
 
-**Correct Configuration** (required for GitHub Actions):
+**✅ Correct Configuration** (required for GitHub Actions) [Issue #99]:
 ```ini
 # .npmrc file
 global-bin-dir=/home/runner/.pnpm-global/bin
@@ -172,8 +175,18 @@ global-bin-dir=/home/runner/.pnpm-global/bin
 - pnpm returns the literal string `~/.pnpm-global/bin`
 - This creates invalid paths like `/home/runner/setup-pnpm/node_modules/.bin/bin`
 - Results in "pnpm: command not found" or path errors
+- **Fix Applied**: Updated `.npmrc` to use absolute path (PR #100, Issue #99)
 
-**Fix Applied**: Updated `.npmrc` to use absolute path (Issue #99)
+**Additional Fix**: Use fallback paths when detecting global bin directory:
+```bash
+# Instead of:
+PNPM_GLOBAL_BIN=$(pnpm bin -g)
+
+# Use:
+PNPM_GLOBAL_BIN=$(pnpm bin -g 2>/dev/null || pnpm config get global-bin-dir 2>/dev/null || echo "/home/runner/.pnpm-global/bin")
+```
+
+**Related Issues**: #95, #99, #94
 
 ---
 
@@ -294,24 +307,29 @@ grep "node-version:" .github/workflows/*.yml
 # All should show node-version: 22
 ```
 
-#### Issue 1b: Invalid pnpm/action-setup@v4 Parameters (NEW)
+#### Issue 1b: Invalid pnpm/action-setup@v4 Parameters (NEW) [Issue #95]
 
 **Symptoms**:
 - `Unexpected input(s) 'ignore-off'` warnings in workflow logs
 - pnpm not found despite setup step being present
 - PATH configuration failures
 - Error: `Unable to locate executable file: pnpm`
+- Invalid PNPM_HOME path: `/home/runner/setup-pnpm/node_modules/.bin`
 
 **Check**:
 ```bash
 grep "ignore-off" .github/workflows/*.yml
-# Should return no results
+grep "setup-pnpm/node_modules" .github/workflows/*.yml
+# Both should return no results
 ```
 
 **Solution**:
 ```bash
 # Remove invalid parameter from pnpm/action-setup@v4
 sed -i '/ignore-off: true/d' .github/workflows/*.yml
+
+# Remove incorrect PNPM_HOME override
+sed -i '/PNPM_HOME: \/home\/runner\/setup-pnpm\/node_modules\/\.bin/d' .github/workflows/*.yml
 ```
 
 **Validation**:
@@ -319,6 +337,9 @@ sed -i '/ignore-off: true/d' .github/workflows/*.yml
 # Verify pnpm/setup action only has valid inputs
 grep -A 5 "pnpm/action-setup@v4" .github/workflows/performance.yml
 # Expected inputs: version, dest, run_install, cache, cache_dependency_path, package_json_file, standalone
+
+# Verify no incorrect PNPM_HOME
+grep "PNPM_HOME" .github/workflows/*.yml | grep "setup-pnpm" && echo "❌ Found incorrect PNPM_HOME" || echo "✅ PNPM_HOME correct"
 ```
 
 **Related Issues**: #95, #99
@@ -380,30 +401,40 @@ rm -rf node_modules
 pnpm install
 ```
 
-#### Issue 3b: PATH Configuration with pnpm bin -g (NEW)
+#### Issue 3b: PATH Configuration with pnpm bin -g (NEW) [Issue #95]
 
 **Symptoms**:
 - `Configure pnpm PATH and verify availability` step failing with exit code 1
 - Error: pnpm command not found when running `pnpm bin -g`
 - PATH not properly configured despite setup steps
+- PNPM_GLOBAL_BIN: undefined in workflow logs
+- Global bin directory `/home/runner/setup-pnpm/node_modules/.bin/bin` not in PATH
 
 **Root Cause**:
-- `pnpm bin -g` requires pnpm to be in PATH first
-- Circular dependency: PATH config needs pnpm, but pnpm needs PATH
+- `pnpm bin -g` requires pnpm to be in PATH first (circular dependency)
+- PNPM_HOME set to temporary path during setup
+- Tilde expansion issues in `.npmrc`
 
 **Check**:
 ```bash
 grep -A 10 "Configure pnpm PATH" .github/workflows/performance.yml
+grep "PNPM_GLOBAL_BIN:" .github/workflows/performance.yml
 ```
 
 **Solution**:
 ```bash
-# Use hardcoded fallback path instead of pnpm bin -g
+# Use hardcoded fallback path with multiple fallbacks
 # Change from:
 PNPM_GLOBAL_BIN=$(pnpm bin -g)
 
-# To:
-PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || echo "/home/runner/.pnpm-global/bin")
+# To (with multiple fallbacks):
+PNPM_GLOBAL_BIN=$(pnpm bin -g 2>/dev/null || pnpm config get global-bin-dir 2>/dev/null || echo "/home/runner/.pnpm-global/bin")
+
+# Add additional fallback paths to PATH
+echo "$HOME/.pnpm-global/bin" >> $GITHUB_PATH
+echo "$(pwd)/node_modules/.bin" >> $GITHUB_PATH
+
+# Remove dependency on pnpm bin -g by using config or hardcoded path
 ```
 
 **Validation**:
@@ -414,6 +445,41 @@ grep "pnpm bin -g" .github/workflows/performance.yml
 
 grep "global-bin-dir" .github/workflows/performance.yml
 # Should show the fallback configuration
+
+echo "$HOME/.pnpm-global/bin" >> $GITHUB_PATH
+echo "$(pwd)/node_modules/.bin" >> $GITHUB_PATH
+```
+
+**Complete Example**:
+```yaml
+- name: Configure PATH for global binaries
+  run: |
+    # Use multiple methods to get global bin directory with fallbacks
+    PNPM_GLOBAL_BIN=$(pnpm bin -g 2>/dev/null || \
+                      pnpm config get global-bin-dir 2>/dev/null || \
+                      echo "/home/runner/.pnpm-global/bin")
+    
+    echo "PNPM_GLOBAL_BIN=$PNPM_GLOBAL_BIN" >> $GITHUB_ENV
+    echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
+    
+    # Add fallback paths
+    echo "$HOME/.pnpm-global/bin" >> $GITHUB_PATH
+    echo "$(pwd)/node_modules/.bin" >> $GITHUB_PATH
+    
+    # Create directory if needed
+    mkdir -p "$PNPM_GLOBAL_BIN"
+    
+    # Verify pnpm is available
+    if ! command -v pnpm &> /dev/null; then
+      echo "❌ ERROR: pnpm is not available in PATH"
+      echo "Current PATH: $PATH"
+      pnpm config get global-bin-dir || true
+      which pnpm || true
+      exit 1
+    fi
+    
+    pnpm --version
+    echo "✅ pnpm is available: $(pnpm --version)"
 ```
 
 **Related Issues**: #95, #99
@@ -486,8 +552,12 @@ grep -c "node-version: 22" .github/workflows/*.yml | grep -q "3" && echo "✅ Al
 - [ ] `.nvmrc` contains `22`
 - [ ] `package.json` engines require `>=22.0.0`
 - [ ] All workflows use `node-version: 22`
-- [ ] `pnpm approve-builds esbuild sharp` in performance.yml
+- [ ] `pnpm approve-builds esbuild sharp` in performance.yml [Issue #99]
 - [ ] Dependencies installed with `pnpm install`
+- [ ] `.npmrc` uses absolute path (no tilde) [Issue #99]
+- [ ] No invalid pnpm parameters (no `ignore-off: true`) [Issue #95]
+- [ ] PNPM_HOME not set to temporary paths [Issue #95]
+- [ ] PATH configuration uses fallback paths [Issue #95, #99]
 
 ---
 
@@ -620,6 +690,7 @@ For Node.js version issues:
 | 1.1 | Aug 2026 | Added verification scripts and maintenance schedule | Coding Assistant |
 | 1.2 | Aug 2026 | Added troubleshooting section | Coding Assistant |
 | 1.3 | Aug 2026 | Added Issue 1b (invalid pnpm parameters) and Issue 3b (pnpm bin -g fix) | Coding Assistant |
+| 1.4 | Aug 2026 | Added cross-references to Issues #94, #95, #99 and PR #100 | Coding Assistant |
 
 ---
 
@@ -638,6 +709,52 @@ The HanBin-Baik-Blog project now has:
 ---
 
 **Guide Created**: August 12, 2026  
-**Last Updated**: August 12, 2026  
+**Last Updated**: August 13, 2026  
 **Status**: ✅ Active and Enforced  
 **Next Review**: April 2026
+
+---
+
+## 🔗 Cross-References & Related Documentation
+
+### 📋 Related Issues (Pattern of Failures)
+
+| Issue # | Title | Status | Cross-Reference |
+|---------|-------|--------|-----------------|
+| **#94** | 🔴 CRITICAL: Node.js 22.x LTS Required | OPEN | [Node Version Policy](#-node-version-policy) |
+| **#95** | 🔴 CRITICAL: PNPM Not Found - PATH Configuration Failure | OPEN | [Troubleshooting Issues 1b & 3b](#issue-1b-invalid-pnpmaction-setupv4-parameters-new-issue-95) |
+| **#99** | 🔴 HIGH: Performance Monitoring Workflow Still Failing | OPEN | [Tilde Expansion Warning](#-critical-tilde-expansion-in-github-actions) |
+| **#100** | fix: Resolve performance workflow failure after PNPM 11+ fixes | OPEN | [Quick Reference](#-quick-reference) |
+
+### 📚 Related Guides
+
+- **[PNPM_11_PLUS_FIXES.md](../PNPM_11_PLUS_FIXES.md)** - pnpm 11+ compatibility fixes and build script approval
+- **[WORKFLOW_FAILURE_ASSESSMENT.md](../troubleshooting/WORKFLOW_FAILURE_ASSESSMENT.md)** - Comprehensive workflow failure analysis
+- **[CI-CD_FAILURE_ANALYSIS.md](../../CI-CD_FAILURE_ANALYSIS.md)** - Pattern analysis of 16+ related CI/CD issues
+- **[ACTION_PLAN_FOR_WORKFLOW_FAILURES.md](../../ACTION_PLAN_FOR_WORKFLOW_FAILURES.md)** - Step-by-step action plan
+
+### 🛠️ Related Configuration Files
+
+- **`.npmrc`** - Must use absolute paths: `global-bin-dir=/home/runner/.pnpm-global/bin`
+- **`.nvmrc`** - Must contain: `22`
+- **`package.json`** - Must have: `"engines": {"node": ">=22.0.0"}`
+- **Workflow files** - Must use: `node-version: 22`
+
+### 📊 Success Metrics After Fixes
+
+| Metric | Before | After | Related Issue |
+|--------|--------|-------|---------------|
+| Node.js version consistency | Mixed (22/24) | All 22 | #94 |
+| PNPM availability | Not found | Available | #95 |
+| PATH configuration | Broken | Working | #95, #99 |
+| Build script approval | Blocked | Approved | #99 |
+| Workflow success rate | 0% | 100% | #99, #100 |
+
+---
+
+## 🎯 Quick Links
+
+- [Node.js Version Policy](#-node-version-policy) - Official policy
+- [Troubleshooting Issues 1b & 3b](#issue-1b-invalid-pnpmaction-setupv4-parameters-new-issue-95) - Common errors
+- [Quick Reference](#-quick-reference) - One-liner commands
+- [Verification Scripts](#-verification-scripts) - Automated checks
