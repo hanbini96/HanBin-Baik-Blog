@@ -38,38 +38,37 @@ jobs:
           run_install: true
           standalone: true
 
-      - name: Standardize PNPM_HOME location
-        run: |
-          # Override PNPM_HOME that was set by pnpm/action-setup
-          echo "PNPM_HOME=/home/runner/.pnpm-global" >> $GITHUB_ENV
-          echo "/home/runner/.pnpm-global/bin" >> $GITHUB_PATH
-          mkdir -p /home/runner/.pnpm-global/bin
-          echo "✅ PNPM_HOME standardized to: /home/runner/.pnpm-global"
-      
-      - name: Set up Node.js
+      - name: Set up Node.js with pnpm cache
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'pnpm'
 
-      - name: Configure PATH for global binaries
+      - name: Configure PATH and verify pnpm availability
         id: path-config
         run: |
-          # Standardize PNPM_HOME
+          # Standardize PNPM_HOME location
           echo "PNPM_HOME=/home/runner/.pnpm-global" >> $GITHUB_ENV
           
-          # Add PNPM global bin to PATH
-          echo "$PNPM_HOME/bin" >> $GITHUB_PATH
+          # Get pnpm's actual global bin directory
+          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || echo "$HOME/.pnpm-global/bin")
+          echo "PNPM_GLOBAL_BIN=$PNPM_GLOBAL_BIN" >> $GITHUB_ENV
           
-          # Add node_modules/.bin to PATH
+          # Add critical paths to PATH (simplified and consolidated)
+          echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
           echo "$(pwd)/node_modules/.bin" >> $GITHUB_PATH
           
-          # Create directory if it doesn't exist
-          mkdir -p "$PNPM_HOME/bin"
+          # Create directories if they don't exist
+          mkdir -p "$PNPM_GLOBAL_BIN"
           
-          # Verify pnpm is available
+          # Debug output for troubleshooting
+          echo "🔧 PATH Configuration:"
+          echo "PNPM_HOME: $PNPM_HOME"
+          echo "PNPM_GLOBAL_BIN: $PNPM_GLOBAL_BIN"
+          
+          # Verify pnpm is available BEFORE proceeding
           if ! command -v pnpm &> /dev/null; then
-            echo "❌ ERROR: pnpm is not available in PATH"
+            echo "❌ CRITICAL ERROR: pnpm is not available in PATH"
             echo "Current PATH: $PATH"
             which pnpm || true
             echo "🔧 Available commands:"
@@ -78,17 +77,46 @@ jobs:
           fi
           
           pnpm --version
-          echo "✅ pnpm is available: $(pnpm --version)"
+          echo "✅ pnpm verified: $(pnpm --version)"
       
-      # CRITICAL FIX for pnpm 11+ security: Approve build scripts
-      # pnpm 11+ ignores build scripts by default for security reasons
+      # CRITICAL FIX: pnpm 11+ ignores build scripts by default for security
       # esbuild and sharp are required for Astro builds
-      # Must use pnpm approve-builds command (PNPM_ALLOW_BUILDS env var does not work in pnpm 11+)
-      - name: Approve build scripts for required packages
+      # Must use pnpm approve-builds command (PNPM_ALLOW_BUILDS env var doesn't work in pnpm 11+)
+      - name: Approve build scripts for PNPM 11+ security
         run: |
-          echo "✅ Approving build scripts for esbuild and sharp (pnpm 11+ security)..."
-          pnpm approve-builds esbuild sharp || echo "Build scripts already approved"
-
+          echo "🔒 Approving build scripts for esbuild and sharp (PNPM 11+ security)..."
+          pnpm approve-builds esbuild sharp || echo "⚠️ Build scripts already approved"
+      
+      - name: Debug environment and paths
+        if: always()
+        run: |
+          echo "🔍 Infrastructure Health Check - Environment Debug:"
+          echo "=================================================="
+          echo ""
+          echo "📊 Current working directory:"
+          pwd
+          echo ""
+          echo "📁 Directory contents:"
+          ls -la
+          echo ""
+          echo "📁 node_modules/.bin contents:"
+          ls -la node_modules/.bin 2>/dev/null || echo "node_modules/.bin not found"
+          echo ""
+          echo "📁 $PNPM_GLOBAL_BIN contents:"
+          ls -la "$PNPM_GLOBAL_BIN" 2>/dev/null || echo "PNPM_GLOBAL_BIN not accessible"
+          echo ""
+          echo "🔧 PATH verification:"
+          echo "PATH: $PATH"
+          echo ""
+          echo "📦 Command availability:"
+          command -v pnpm && echo "✅ pnpm: $(pnpm --version)" || echo "❌ pnpm: NOT FOUND"
+          command -v node && echo "✅ node: $(node --version)" || echo "❌ node: NOT FOUND"
+          echo ""
+          echo "💾 Disk space check:"
+          df -h / | awk 'NR==2{print "Available: " $4}'
+          echo ""
+          echo "🔍 Debug complete"
+      
       - name: Check GitHub Pages deployment status
         id: pages-status
         run: |

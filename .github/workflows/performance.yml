@@ -1,18 +1,3 @@
-# 🔍 DISCOVERY & FIX LOG
-# ======================
-# 
-# Discovery Date: 2026-08-12
-# Issue: PR #78 workflow failures due to PNPM 11+ build script restrictions
-# Root Cause: PNPM 11+ ignores build scripts by default for security reasons.
-#             The PNPM_ALLOW_BUILDS environment variable does NOT work in pnpm 11+.
-#             esbuild and sharp are required devDependencies for Astro builds.
-# 
-# Fix Applied: Replaced PNPM_ALLOW_BUILDS with pnpm approve-builds command
-#              in both lighthouse and performance-benchmark jobs in .github/workflows/performance.yml
-#
-# Workflow: Performance Monitoring & Benchmarking
-#
-
 name: Performance Monitoring & Benchmarking
 
 on:
@@ -23,6 +8,10 @@ on:
   schedule:
     - cron: '0 */2 * * *'
   workflow_dispatch: {}
+
+# Critical: PNPM 11+ requires build scripts to be approved for security
+# esbuild and sharp are required devDependencies for Astro builds
+# Must use pnpm approve-builds command (PNPM_ALLOW_BUILDS env var doesn't work in pnpm 11+)
 
 env:
   LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
@@ -56,14 +45,6 @@ jobs:
           run_install: true
           standalone: true
       
-      - name: Standardize PNPM_HOME location
-        run: |
-          # Override PNPM_HOME that was set by pnpm/action-setup
-          echo "PNPM_HOME=/home/runner/.pnpm-global" >> $GITHUB_ENV
-          echo "/home/runner/.pnpm-global/bin" >> $GITHUB_PATH
-          mkdir -p /home/runner/.pnpm-global/bin
-          echo "✅ PNPM_HOME standardized to: /home/runner/.pnpm-global"
-      
       - name: Set up Node.js with pnpm cache
         uses: actions/setup-node@v4
         with:
@@ -71,33 +52,35 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: '**/pnpm-lock.yaml'
       
-      - name: Configure PATH for global binaries
+      - name: Configure PATH and verify pnpm availability
         id: path-config
         run: |
-          # Standardize PNPM_HOME
+          # Standardize PNPM_HOME location
           echo "PNPM_HOME=/home/runner/.pnpm-global" >> $GITHUB_ENV
           
-          # Add PNPM global bin to PATH
-          echo "$PNPM_HOME/bin" >> $GITHUB_PATH
+          # Get pnpm's actual global bin directory
+          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || echo "$HOME/.pnpm-global/bin")
+          echo "PNPM_GLOBAL_BIN=$PNPM_GLOBAL_BIN" >> $GITHUB_ENV
           
-          # Add node_modules/.bin to PATH
+          # Add critical paths to PATH (simplified and consolidated)
+          echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
           echo "$(pwd)/node_modules/.bin" >> $GITHUB_PATH
-          
-          # Add current directory bin to PATH
           echo "$(pwd)/bin" >> $GITHUB_PATH
           
-          # Create directory if it doesn't exist
-          mkdir -p "$PNPM_HOME/bin"
+          # Create directories if they don't exist
+          mkdir -p "$PNPM_GLOBAL_BIN"
           
-          # Comprehensive PATH verification
+          # Debug output for troubleshooting
           echo "🔧 PATH Configuration:"
-          echo "PNPM Global Bin: $PNPM_HOME/bin"
+          echo "PNPM_HOME: $PNPM_HOME"
+          echo "PNPM_GLOBAL_BIN: $PNPM_GLOBAL_BIN"
           echo "Current PATH: $PATH"
           
-          # Verify critical commands are available
+          # Verify pnpm is available BEFORE proceeding
           if ! command -v pnpm &> /dev/null; then
-            echo "❌ ERROR: pnpm is not available in PATH"
-            echo "Available commands: $(compgen -c | grep -E 'pnpm|node|npm' | head -20)"
+            echo "❌ CRITICAL ERROR: pnpm is not available in PATH"
+            echo "Available commands:"
+            compgen -c | grep -E 'pnpm|node|npm' | head -20 || true
             echo "PNPM_HOME env: $PNPM_HOME"
             which pnpm || true
             echo "🔧 PATH contents:"
@@ -105,62 +88,62 @@ jobs:
             exit 1
           fi
           
-          if ! command -v astro &> /dev/null; then
-            echo "⚠️ WARNING: astro not found (may be expected before install)"
-          fi
-          
           pnpm --version
-          echo "✅ PATH configured successfully: $PNPM_HOME/bin added to PATH"
+          echo "✅ pnpm verified: $(pnpm --version)"
       
-      # CRITICAL FIX for pnpm 11+ security: Configure build scripts
-      # pnpm 11+ ignores build scripts by default for security reasons
+      # CRITICAL FIX: pnpm 11+ ignores build scripts by default for security
       # esbuild and sharp are required devDependencies for Astro builds
       # Must use pnpm approve-builds command (PNPM_ALLOW_BUILDS env var doesn't work in pnpm 11+)
-      - name: Approve build scripts for required packages
+      - name: Approve build scripts for PNPM 11+ security
         run: |
-          echo "✅ Approving build scripts for esbuild and sharp (pnpm 11+ security)..."
-          pnpm approve-builds esbuild sharp || echo "Build scripts already approved"
-
+          echo "🔒 Approving build scripts for esbuild and sharp (PNPM 11+ security)..."
+          pnpm approve-builds esbuild sharp || echo "⚠️ Build scripts already approved"
+      
       - name: Install project dependencies
         run: pnpm install --frozen-lockfile
         env:
           NODE_OPTIONS: --max-old-space-size=4096
       
-      - name: Verify pnpm installation after dependencies
+      - name: Verify pnpm after dependency installation
         run: |
-          # Verify pnpm is still available after dependency installation
           if ! command -v pnpm &> /dev/null; then
             echo "❌ ERROR: pnpm not available after dependency installation"
             exit 1
           fi
           pnpm --version
-          echo "✅ pnpm verified after dependency installation"
+          echo "✅ pnpm verified after install: $(pnpm --version)"
       
-      - name: Configure PATH for all subsequent steps
+      - name: Debug environment and paths
+        if: always()
         run: |
-          # Add pnpm global bin to PATH
-          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || echo "$HOME/.pnpm-global/bin")
-          echo "PNPM_GLOBAL_BIN=$PNPM_GLOBAL_BIN" >> $GITHUB_ENV
-          echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
-          echo "$HOME/.pnpm-global/bin" >> $GITHUB_PATH
-          
-          # Add node_modules/.bin to PATH
-          echo "$(pwd)/node_modules/.bin" >> $GITHUB_PATH
-          
-          # Add current directory bin to PATH
-          echo "$(pwd)/bin" >> $GITHUB_PATH
-          
-          # Verify PATH configuration
-          echo "🔧 PATH Configuration:"
-          echo "Current PATH: $PATH"
-          echo "PNPM Global Bin: $PNPM_GLOBAL_BIN"
-          
-          # Verify critical commands
-          which pnpm && pnpm --version || { echo "❌ pnpm not found"; exit 1; }
-          which astro && astro --version || { echo "❌ astro not found"; exit 1; }
-          
-          echo "✅ PATH configured successfully for all steps"
-
+          echo "🔍 Environment Debug Information:"
+          echo "================================"
+          echo ""
+          echo "📊 Current working directory:"
+          pwd
+          echo ""
+          echo "📁 Directory contents:"
+          ls -la
+          echo ""
+          echo "📁 node_modules/.bin contents:"
+          ls -la node_modules/.bin 2>/dev/null || echo "node_modules/.bin not found"
+          echo ""
+          echo "📁 $PNPM_GLOBAL_BIN contents:"
+          ls -la "$PNPM_GLOBAL_BIN" 2>/dev/null || echo "PNPM_GLOBAL_BIN not accessible"
+          echo ""
+          echo "🔧 PATH verification:"
+          echo "PATH: $PATH"
+          echo ""
+          echo "📦 Command availability:"
+          command -v pnpm && echo "✅ pnpm: $(pnpm --version)" || echo "❌ pnpm: NOT FOUND"
+          command -v astro && echo "✅ astro: $(astro --version)" || echo "⚠️ astro: NOT FOUND (may be expected)"
+          command -v node && echo "✅ node: $(node --version)" || echo "❌ node: NOT FOUND"
+          echo ""
+          echo "💾 Disk space check:"
+          df -h / | awk 'NR==2{print "Available: " $4}'
+          echo ""
+          echo "🔍 Debug complete"
+      
       - name: Build Astro site
         run: pnpm build
         env:
