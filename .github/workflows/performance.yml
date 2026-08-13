@@ -463,3 +463,117 @@ jobs:
           echo "======================================"
           echo ""
           echo "✅ Workflow completed successfully"
+
+  lighthouse-live:
+    name: 🌐 Lighthouse Live Site Audit
+    needs: lighthouse
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev-update'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Lighthouse CLI globally
+        run: |
+          echo "📦 Installing Lighthouse CLI..."
+          npm install -g lighthouse
+          lighthouse --version
+
+      - name: Run Lighthouse on Live GitHub Pages
+        id: lighthouse-live
+        run: |
+          echo "🔍 Auditing live site: https://hanbini96.github.io/HanBin-Baik-Blog/"
+          echo "📊 Testing URLs:"
+          echo "  - https://hanbini96.github.io/HanBin-Baik-Blog/"
+          echo "  - https://hanbini96.github.io/HanBin-Baik-Blog/blog"
+          echo "  - https://hanbini96.github.io/HanBin-Baik-Blog/about"
+          
+          # Run Lighthouse audit
+          lighthouse https://hanbini96.github.io/HanBin-Baik-Blog/ \
+            https://hanbini96.github.io/HanBin-Baik-Blog/blog \
+            https://hanbini96.github.io/HanBin-Baik-Blog/about \
+            --output=html --output-path=./lighthouse-report-live.html \
+            --chrome-flags="--no-sandbox --headless --disable-gpu" \
+            --only-categories=performance,accessibility,best-practices,seo \
+            --throttling.cpuSlowdown=2
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+
+      - name: Upload Live Site Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-live-report-${{ github.sha }}
+          path: |
+            lighthouse-report-live.html
+            lighthouse-report-live.json
+          retention-days: 30
+
+      - name: Create GitHub Issue on Regression (if audit fails)
+        if: failure() && steps.lighthouse-live.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueTitle = '[Performance] 🚨 Live Site Performance Regression Detected';
+            const issueBody = `## Performance Regression Alert 🚨
+
+**Site**: https://hanbini96.github.io/HanBin-Baik-Blog/
+**Workflow**: https://github.com/hanbini96/HanBin-Baik-Blog/actions/runs/${{ github.run_id }}
+**Detected**: ${{ github.event.repository.updated_at }}
+
+### 📊 Audit Results:
+- Status: **FAILED** ❌
+- The live site performance audit detected issues
+
+### 🔍 Next Steps:
+1. 📥 Download the Lighthouse report artifact below
+2. 🔍 Review performance metrics and recommendations
+3. 🛠️ Investigate recent changes that may have caused regression
+4. 🎯 Create fix branch and address the performance issues
+
+### 📁 Artifacts:
+- [Download Lighthouse Report](https://github.com/hanbini96/HanBin-Baik-Blog/actions/runs/${{ github.run_id }}#artifacts)
+
+---
+
+**Automated by**: GitHub Actions - performance.yml
+**Branch**: ${{ github.ref_name }}
+**Commit**: ${{ github.sha }}`;
+            
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: issueTitle,
+              body: issueBody,
+              labels: ['performance', 'regression', 'automated', 'critical']
+            });
+
+      - name: Performance Summary
+        if: success()
+        run: |
+          echo "🎉 Live Site Performance Audit PASSED! ✅"
+          echo ""
+          echo "📊 Audit completed successfully"
+          echo "🌐 Site tested: https://hanbini96.github.io/HanBin-Baik-Blog/"
+          echo "📁 Report saved: lighthouse-report-live.html"
+          echo ""
+          echo "🎯 Next Steps:"
+          echo "1. Review the uploaded report artifact"
+          echo "2. Track performance trends over time"
+          echo "3. Set up monitoring for future regressions"
+          
+          # Extract basic metrics from JSON report
+          if [ -f lighthouse-report-live.json ]; then
+            echo ""
+            echo "📈 Key Metrics:"
+            echo "Performance Score: $(jq -r '.categories.performance.score * 100 | floor' lighthouse-report-live.json) %"
+            echo "Accessibility Score: $(jq -r '.categories.accessibility.score * 100 | floor' lighthouse-report-live.json) %"
+            echo "Best Practices Score: $(jq -r '.categories["best-practices"].score * 100 | floor' lighthouse-report-live.json) %"
+            echo "SEO Score: $(jq -r '.categories.seo.score * 100 | floor' lighthouse-report-live.json) %"
+          fi
