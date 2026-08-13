@@ -27,6 +27,7 @@ jobs:
         with:
           version: 11.21.0
           run_install: false
+          standalone: true    # Make pnpm available immediately
         env:
           PNPM_HOME: /home/runner/.pnpm-global
       
