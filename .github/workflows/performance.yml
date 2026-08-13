@@ -53,8 +53,10 @@ jobs:
         id: pnpm-setup
         with:
           version: 11.21.0
-          run_install: true  # Install dependencies AND make pnpm available globally
-          standalone: true    # Make pnpm available immediately without Node.js setup
+          run_install: true
+          standalone: true
+        env:
+          PNPM_HOME: /home/runner/.pnpm-global
       
       - name: Set up Node.js with pnpm cache
         uses: actions/setup-node@v4
@@ -63,31 +65,27 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: '**/pnpm-lock.yaml'
       
-      - name: Final pnpm setup
-        run: pnpm setup
-      
       - name: Configure PATH for global binaries
         id: path-config
         run: |
-          # Use robust fallback method with multiple fallbacks
-          # Fallback chain: pnpm config → hardcoded path → environment variable
-          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || \
-                           echo "$HOME/.pnpm-global/bin")
+          # Standardize PNPM_HOME
+          echo "PNPM_HOME=/home/runner/.pnpm-global" >> $GITHUB_ENV
           
-          echo "PNPM_GLOBAL_BIN=$PNPM_GLOBAL_BIN" >> $GITHUB_ENV
-          echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
+          # Add PNPM global bin to PATH
+          echo "$PNPM_HOME/bin" >> $GITHUB_PATH
           
-          # Add additional critical paths
-          echo "$HOME/.pnpm-global/bin" >> $GITHUB_PATH
+          # Add node_modules/.bin to PATH
           echo "$(pwd)/node_modules/.bin" >> $GITHUB_PATH
+          
+          # Add current directory bin to PATH
           echo "$(pwd)/bin" >> $GITHUB_PATH
           
           # Create directory if it doesn't exist
-          mkdir -p "$PNPM_GLOBAL_BIN"
+          mkdir -p "$PNPM_HOME/bin"
           
           # Comprehensive PATH verification
           echo "🔧 PATH Configuration:"
-          echo "PNPM Global Bin: $PNPM_GLOBAL_BIN"
+          echo "PNPM Global Bin: $PNPM_HOME/bin"
           echo "Current PATH: $PATH"
           
           # Verify critical commands are available
@@ -95,7 +93,6 @@ jobs:
             echo "❌ ERROR: pnpm is not available in PATH"
             echo "Available commands: $(compgen -c | grep -E 'pnpm|node|npm' | head -20)"
             echo "PNPM_HOME env: $PNPM_HOME"
-            pnpm config get global-bin-dir || true
             which pnpm || true
             echo "🔧 PATH contents:"
             echo "$PATH" | tr ':' '\n'
@@ -107,12 +104,12 @@ jobs:
           fi
           
           pnpm --version
-          echo "✅ PATH configured successfully: $PNPM_GLOBAL_BIN added to PATH"
+          echo "✅ PATH configured successfully: $PNPM_HOME/bin added to PATH"
+      
       # CRITICAL FIX for pnpm 11+ security: Configure build scripts
       # pnpm 11+ ignores build scripts by default for security reasons
       # esbuild and sharp are required devDependencies for Astro builds
       # Must use pnpm approve-builds command (PNPM_ALLOW_BUILDS env var doesn't work in pnpm 11+)
-      # This MUST come AFTER PATH configuration
       - name: Approve build scripts for required packages
         run: |
           echo "✅ Approving build scripts for esbuild and sharp (pnpm 11+ security)..."

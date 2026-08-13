@@ -31,12 +31,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up pnpm
+      - name: Set up pnpm with global bin directory
         uses: pnpm/action-setup@v4
         with:
           version: 11.21.0
           run_install: true
-          standalone: true    # Make pnpm available immediately
+          standalone: true
         env:
           PNPM_HOME: /home/runner/.pnpm-global
 
@@ -46,24 +46,22 @@ jobs:
           node-version: 22
           cache: 'pnpm'
 
-      # CRITICAL FIX for pnpm 11+ security: Approve build scripts
-      - name: Approve build scripts for required packages
+      - name: Configure PATH for global binaries
+        id: path-config
         run: |
-          echo "✅ Approving build scripts for esbuild and sharp (pnpm 11+ security)..."
-          pnpm approve-builds esbuild sharp || echo "Build scripts already approved"
-
-      - name: Configure pnpm PATH and verify availability
-        run: |
-          # Standardize PATH configuration for pnpm
-          # Use hardcoded path since pnpm bin command requires pnpm to be in PATH first
-          echo "/home/runner/.pnpm-global/bin" >> $GITHUB_PATH
-          mkdir -p "$HOME/.pnpm-global/bin"
-          echo "$HOME/.pnpm-global/bin" >> $GITHUB_PATH
+          # Standardize PNPM_HOME
+          echo "PNPM_HOME=/home/runner/.pnpm-global" >> $GITHUB_ENV
+          
+          # Add PNPM global bin to PATH
+          echo "$PNPM_HOME/bin" >> $GITHUB_PATH
           
           # Add node_modules/.bin to PATH
           echo "$(pwd)/node_modules/.bin" >> $GITHUB_PATH
           
-          # Verify pnpm is available before use
+          # Create directory if it doesn't exist
+          mkdir -p "$PNPM_HOME/bin"
+          
+          # Verify pnpm is available
           if ! command -v pnpm &> /dev/null; then
             echo "❌ ERROR: pnpm is not available in PATH"
             echo "Current PATH: $PATH"
@@ -75,11 +73,13 @@ jobs:
           
           pnpm --version
           echo "✅ pnpm is available: $(pnpm --version)"
-          
-          # CRITICAL FIX for pnpm 11+ security: Approve build scripts
-          # pnpm 11+ ignores build scripts by default for security reasons
-          # esbuild and sharp are required for Astro builds
-          # Must use pnpm approve-builds command (PNPM_ALLOW_BUILDS env var does not work in pnpm 11+)
+      
+      # CRITICAL FIX for pnpm 11+ security: Approve build scripts
+      # pnpm 11+ ignores build scripts by default for security reasons
+      # esbuild and sharp are required for Astro builds
+      # Must use pnpm approve-builds command (PNPM_ALLOW_BUILDS env var does not work in pnpm 11+)
+      - name: Approve build scripts for required packages
+        run: |
           echo "✅ Approving build scripts for esbuild and sharp (pnpm 11+ security)..."
           pnpm approve-builds esbuild sharp || echo "Build scripts already approved"
 
