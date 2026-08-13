@@ -60,10 +60,7 @@ jobs:
           version: 11.21.0
           run_install: false
           ignore-off: true
-        env:
-          PNPM_HOME: /home/runner/.pnpm-global
-      
-      # CRITICAL FIX for pnpm 11+ security: Approve build scripts
+      # CRITICAL FIX for pnpm 11+ security: Configure build scripts
       # pnpm 11+ ignores build scripts by default for security reasons
       # esbuild and sharp are required devDependencies for Astro builds
       # Must use pnpm approve-builds command (PNPM_ALLOW_BUILDS env var doesn't work in pnpm 11+)
