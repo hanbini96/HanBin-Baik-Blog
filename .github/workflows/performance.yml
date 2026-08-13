@@ -55,8 +55,14 @@ jobs:
           version: 11.21.0
           run_install: true
           standalone: true
-        env:
-          PNPM_HOME: /home/runner/.pnpm-global
+      
+      - name: Standardize PNPM_HOME location
+        run: |
+          # Override PNPM_HOME that was set by pnpm/action-setup
+          echo "PNPM_HOME=/home/runner/.pnpm-global" >> $GITHUB_ENV
+          echo "/home/runner/.pnpm-global/bin" >> $GITHUB_PATH
+          mkdir -p /home/runner/.pnpm-global/bin
+          echo "✅ PNPM_HOME standardized to: /home/runner/.pnpm-global"
       
       - name: Set up Node.js with pnpm cache
         uses: actions/setup-node@v4
