@@ -42,6 +42,7 @@ This guide consolidates all Node.js version-related documentation for the HanBin
 - ❌ Node.js 20.x (end of life, no LTS support)
 - ❌ Node.js 18.x (end of life, no LTS support)
 - ❌ Any non-LTS version
+- ❌ Invalid pnpm/action-setup@v4 parameters (e.g., `ignore-off: true`)
 
 ### 📋 Enforcement
 
@@ -265,6 +266,35 @@ grep "node-version:" .github/workflows/*.yml
 # All should show node-version: 22
 ```
 
+#### Issue 1b: Invalid pnpm/action-setup@v4 Parameters (NEW)
+
+**Symptoms**:
+- `Unexpected input(s) 'ignore-off'` warnings in workflow logs
+- pnpm not found despite setup step being present
+- PATH configuration failures
+- Error: `Unable to locate executable file: pnpm`
+
+**Check**:
+```bash
+grep "ignore-off" .github/workflows/*.yml
+# Should return no results
+```
+
+**Solution**:
+```bash
+# Remove invalid parameter from pnpm/action-setup@v4
+sed -i '/ignore-off: true/d' .github/workflows/*.yml
+```
+
+**Validation**:
+```bash
+# Verify pnpm/setup action only has valid inputs
+grep -A 5 "pnpm/action-setup@v4" .github/workflows/performance.yml
+# Expected inputs: version, dest, run_install, cache, cache_dependency_path, package_json_file, standalone
+```
+
+**Related Issues**: #95, #99
+
 #### Issue 2: Build Script Failures
 
 **Symptoms**:
@@ -321,6 +351,44 @@ pnpm store prune
 rm -rf node_modules
 pnpm install
 ```
+
+#### Issue 3b: PATH Configuration with pnpm bin -g (NEW)
+
+**Symptoms**:
+- `Configure pnpm PATH and verify availability` step failing with exit code 1
+- Error: pnpm command not found when running `pnpm bin -g`
+- PATH not properly configured despite setup steps
+
+**Root Cause**:
+- `pnpm bin -g` requires pnpm to be in PATH first
+- Circular dependency: PATH config needs pnpm, but pnpm needs PATH
+
+**Check**:
+```bash
+grep -A 10 "Configure pnpm PATH" .github/workflows/performance.yml
+```
+
+**Solution**:
+```bash
+# Use hardcoded fallback path instead of pnpm bin -g
+# Change from:
+PNPM_GLOBAL_BIN=$(pnpm bin -g)
+
+# To:
+PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || echo "/home/runner/.pnpm-global/bin")
+```
+
+**Validation**:
+```bash
+# Verify PATH configuration uses fallback
+grep "pnpm bin -g" .github/workflows/performance.yml
+# Should return no results
+
+grep "global-bin-dir" .github/workflows/performance.yml
+# Should show the fallback configuration
+```
+
+**Related Issues**: #95, #99
 
 #### Issue 4: Package.json Engines Mismatch
 
@@ -523,6 +591,7 @@ For Node.js version issues:
 | 1.0 | Aug 2026 | Initial consolidation of Node version docs | Coding Assistant |
 | 1.1 | Aug 2026 | Added verification scripts and maintenance schedule | Coding Assistant |
 | 1.2 | Aug 2026 | Added troubleshooting section | Coding Assistant |
+| 1.3 | Aug 2026 | Added Issue 1b (invalid pnpm parameters) and Issue 3b (pnpm bin -g fix) | Coding Assistant |
 
 ---
 
