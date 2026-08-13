@@ -51,7 +51,7 @@ jobs:
         id: pnpm-setup
         with:
           version: 11.21.0
-          run_install: false
+          run_install: true  # Install dependencies AND make pnpm available globally
         env:
           PNPM_HOME: /home/runner/.pnpm-global  # Use persistent path for consistency
       
@@ -306,7 +306,7 @@ jobs:
         uses: pnpm/action-setup@v4
         with:
           version: 11.21.0
-          run_install: false
+          run_install: true
         env:
           PNPM_HOME: /home/runner/.pnpm-global
       
