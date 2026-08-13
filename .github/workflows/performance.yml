@@ -248,9 +248,9 @@ jobs:
         continue-on-error: true
         with:
           urls: |
-            http://localhost:3000/
-            http://localhost:3000/blog
-            http://localhost:3000/about
+            http://localhost:$PORT/
+            http://localhost:$PORT/blog
+            http://localhost:$PORT/about
           uploadArtifacts: true
           artifactName: "lighthouse-results"
           temporaryPublicStorage: true
