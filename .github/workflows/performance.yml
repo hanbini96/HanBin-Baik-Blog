@@ -53,7 +53,7 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: '**/pnpm-lock.yaml'
 
-      - name: Set up pnpm
+      - name: Set up pnpm with global bin directory
         uses: pnpm/action-setup@v4
         id: pnpm-setup
         with:
@@ -62,6 +62,29 @@ jobs:
           ignore-off: true
         env:
           PNPM_HOME: /home/runner/.pnpm-global
+          PATH: /home/runner/.pnpm-global/bin:/usr/local/bin:/usr/bin:/bin
+      
+      - name: Configure PATH for global binaries
+        run: |
+          # Create pnpm global bin directory if it doesn't exist
+          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || echo "/home/runner/.pnpm-global/bin")
+          echo "PNPM_GLOBAL_BIN=$PNPM_GLOBAL_BIN" >> $GITHUB_ENV
+          echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
+          mkdir -p "$PNPM_GLOBAL_BIN"
+          
+          # Add pnpm global bin to PATH for all subsequent steps
+          export PATH="$PNPM_GLOBAL_BIN:$PATH"
+          
+          # Verify pnpm is available
+          if ! command -v pnpm &> /dev/null; then
+            echo "❌ ERROR: pnpm is not available in PATH"
+            echo "Current PATH: $PATH"
+            which pnpm || true
+            exit 1
+          fi
+          
+          pnpm --version
+          echo "✅ PATH configured: $PNPM_GLOBAL_BIN added to PATH"
       # CRITICAL FIX for pnpm 11+ security: Configure build scripts
       # pnpm 11+ ignores build scripts by default for security reasons
       # esbuild and sharp are required devDependencies for Astro builds
@@ -127,6 +150,7 @@ jobs:
       - name: Install Lighthouse CLI globally
         run: |
           # Install global dependencies using pnpm (not npm) for consistency
+          echo "📦 Installing global dependencies with pnpm..."
           pnpm add -g lighthouse @lhci/cli
           
           # Verify installations with proper error handling
@@ -134,6 +158,7 @@ jobs:
             echo "❌ ERROR: lhci not found after installation"
             echo "PATH is: $PATH"
             which lhci || true
+            echo "🔧 Available commands: $(compgen -c | grep -E 'lhci|lighthouse|pnpm' | head -20)"
             exit 1
           fi
           
@@ -141,9 +166,11 @@ jobs:
             echo "❌ ERROR: lighthouse not found after installation"
             echo "PATH is: $PATH"
             which lighthouse || true
+            echo "🔧 Available commands: $(compgen -c | grep -E 'lhci|lighthouse|pnpm' | head -20)"
             exit 1
           fi
           
+          echo "✅ Lighthouse CLI installed successfully"
           lhci --version
           lighthouse --version
       
@@ -184,18 +211,33 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: Set up pnpm
+      - name: Set up pnpm with global bin directory
         uses: pnpm/action-setup@v4
         with:
           version: 11.21.0
           run_install: false
           ignore-off: true
+        env:
+          PNPM_HOME: /home/runner/.pnpm-global
+          PATH: /home/runner/.pnpm-global/bin:/usr/local/bin:/usr/bin:/bin
       
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'pnpm'
+      - name: Configure PATH for global binaries
+        run: |
+          # Configure PATH consistently with lighthouse job
+          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || echo "/home/runner/.pnpm-global/bin")
+          echo "PNPM_GLOBAL_BIN=$PNPM_GLOBAL_BIN" >> $GITHUB_ENV
+          echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
+          mkdir -p "$PNPM_GLOBAL_BIN"
+          
+          # Verify pnpm is available
+          if ! command -v pnpm &> /dev/null; then
+            echo "❌ ERROR: pnpm is not available in PATH"
+            echo "Current PATH: $PATH"
+            which pnpm || true
+            exit 1
+          fi
+          
+          pnpm --version
       
       # CRITICAL FIX for pnpm 11+ security: Approve build scripts
       # pnpm 11+ ignores build scripts by default for security reasons
