@@ -468,7 +468,7 @@ jobs:
     name: 🌐 Lighthouse Live Site Audit
     needs: lighthouse
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev-update'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev-update' || startsWith(github.ref, 'refs/heads/fix/')
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
