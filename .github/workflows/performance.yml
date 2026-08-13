@@ -62,60 +62,79 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: '**/pnpm-lock.yaml'
       
+      - name: Final pnpm setup
+        run: pnpm setup
+      
       - name: Configure PATH for global binaries
+        id: path-config
         run: |
-          # Create pnpm global bin directory if it doesn't exist
-          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || echo "/home/runner/.pnpm-global/bin")
+          # Use robust fallback method with multiple fallbacks
+          # Fallback chain: pnpm config → hardcoded path → environment variable
+          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || \
+                           echo "$HOME/.pnpm-global/bin")
+          
           echo "PNPM_GLOBAL_BIN=$PNPM_GLOBAL_BIN" >> $GITHUB_ENV
           echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
+          
+          # Add additional critical paths
+          echo "$HOME/.pnpm-global/bin" >> $GITHUB_PATH
+          echo "$(pwd)/node_modules/.bin" >> $GITHUB_PATH
+          echo "$(pwd)/bin" >> $GITHUB_PATH
+          
+          # Create directory if it doesn't exist
           mkdir -p "$PNPM_GLOBAL_BIN"
           
-          # Add pnpm global bin to PATH for all subsequent steps
-          export PATH="$PNPM_GLOBAL_BIN:$PATH"
+          # Comprehensive PATH verification
+          echo "🔧 PATH Configuration:"
+          echo "PNPM Global Bin: $PNPM_GLOBAL_BIN"
+          echo "Current PATH: $PATH"
           
-          # Verify pnpm is available
+          # Verify critical commands are available
           if ! command -v pnpm &> /dev/null; then
             echo "❌ ERROR: pnpm is not available in PATH"
-            echo "Current PATH: $PATH"
+            echo "This indicates a PATH configuration failure"
+            echo "Available commands: $(compgen -c | grep -E 'pnpm|node|npm' | head -20)"
+            pnpm config get global-bin-dir || true
             which pnpm || true
             exit 1
           fi
           
+          if ! command -v astro &> /dev/null; then
+            echo "⚠️ WARNING: astro not found (may be expected before install)"
+          fi
+          
           pnpm --version
-          echo "✅ PATH configured: $PNPM_GLOBAL_BIN added to PATH"
+          echo "✅ PATH configured successfully: $PNPM_GLOBAL_BIN added to PATH"
       # CRITICAL FIX for pnpm 11+ security: Configure build scripts
       # pnpm 11+ ignores build scripts by default for security reasons
       # esbuild and sharp are required devDependencies for Astro builds
       # Must use pnpm approve-builds command (PNPM_ALLOW_BUILDS env var doesn't work in pnpm 11+)
+      # This MUST come AFTER PATH configuration
       - name: Approve build scripts for required packages
         run: |
           echo "✅ Approving build scripts for esbuild and sharp (pnpm 11+ security)..."
           pnpm approve-builds esbuild sharp || echo "Build scripts already approved"
 
-      - name: Configure pnpm PATH and verify availability
-        run: |
-          # Get pnpm's actual global bin directory
-          PNPM_GLOBAL_BIN=$(pnpm bin -g)
-          echo "PNPM_GLOBAL_BIN=$PNPM_GLOBAL_BIN" >> $GITHUB_ENV
-          echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
-          mkdir -p "$PNPM_GLOBAL_BIN"
-          
-          # Verify pnpm is available before use
-          if ! command -v pnpm &> /dev/null; then
-            echo "❌ ERROR: pnpm is not available in PATH"
-            echo "Current PATH: $PATH"
-            which pnpm || true
-            exit 1
-          fi
-          
-          pnpm --version
-          echo "✅ pnpm is available: $(pnpm --version)"
-          echo "✅ PATH configured with pnpm global bin directory"
+      # Remove duplicate PATH configuration step
+      # The PATH was already configured in the previous step
+      # This step is redundant and can cause issues
+      - name: Skip duplicate PATH configuration
+        run: echo "✅ PATH already configured in previous step"
 
       - name: Install project dependencies
         run: pnpm install --frozen-lockfile
         env:
           NODE_OPTIONS: --max-old-space-size=4096
+      
+      - name: Verify pnpm installation after dependencies
+        run: |
+          # Verify pnpm is still available after dependency installation
+          if ! command -v pnpm &> /dev/null; then
+            echo "❌ ERROR: pnpm not available after dependency installation"
+            exit 1
+          fi
+          pnpm --version
+          echo "✅ pnpm verified after dependency installation"
       
       - name: Configure PATH for all subsequent steps
         run: |

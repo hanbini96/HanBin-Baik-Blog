@@ -27,20 +27,26 @@ jobs:
         with:
           version: 11.21.0
           run_install: false
-          
-
+        env:
+          PNPM_HOME: /home/runner/.pnpm-global
+      
+      - name: Final pnpm setup
+        run: pnpm setup
+      
+      
       - name: 🔧 Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache-dependency-path: '**/pnpm-lock.yaml'
+          cache: 'pnpm'
 
       # CRITICAL FIX for pnpm 11+ security: Approve build scripts before install
+      # pnpm 11+ ignores build scripts by default for security reasons
+      # Must use pnpm approve-builds command (PNPM_ALLOW_BUILDS doesn't work in pnpm 11+)
       - name: 📦 Configure pnpm build scripts (pnpm 11+ compatible)
         run: |
-          echo "PNPM_ALLOW_BUILDS=esbuild,sharp" >> $GITHUB_ENV
-        env:
-          PNPM_ALLOW_BUILDS: esbuild,sharp
+          echo "✅ Approving build scripts for esbuild and sharp (pnpm 11+ security)..."
+          pnpm approve-builds esbuild sharp || echo "Build scripts already approved"
 
       - name: 🎯 Add Issue to Project
         if: github.event_name == 'issues' && github.event.action == 'opened'
