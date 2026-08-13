@@ -2,14 +2,13 @@
 # ======================
 # 
 # Discovery Date: 2026-08-12
-# Issue: PR #78 workflow failures due to PNPM build script restrictions
-# Root Cause: PNPM_ALLOW_BUILDS=esbuild,sharp was causing pnpm to ignore
-#             build scripts for critical devDependencies (esbuild, sharp)
-#             which are required for Astro builds
+# Issue: PR #78 workflow failures due to PNPM 11+ build script restrictions
+# Root Cause: PNPM 11+ ignores build scripts by default for security reasons.
+#             The PNPM_ALLOW_BUILDS environment variable does NOT work in pnpm 11+.
+#             esbuild and sharp are required devDependencies for Astro builds.
 # 
-# Fix Applied: Removed PNPM_ALLOW_BUILDS environment variable configuration
-#              from both lighthouse and performance-benchmark jobs
-#              in .github/workflows/performance.yml
+# Fix Applied: Replaced PNPM_ALLOW_BUILDS with pnpm approve-builds command
+#              in both lighthouse and performance-benchmark jobs in .github/workflows/performance.yml
 #
 # Workflow: Performance Monitoring & Benchmarking
 #
@@ -64,14 +63,14 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: '**/pnpm-lock.yaml'
       
-      # CRITICAL FIX for pnpm 11+ security: Configure build scripts
+      # CRITICAL FIX for pnpm 11+ security: Approve build scripts
       # pnpm 11+ ignores build scripts by default for security reasons
       # esbuild and sharp are required devDependencies for Astro builds
-      - name: Configure pnpm build scripts (pnpm 11+ compatible)
+      # Must use pnpm approve-builds command (PNPM_ALLOW_BUILDS env var doesn't work in pnpm 11+)
+      - name: Approve build scripts for required packages
         run: |
-          echo "PNPM_ALLOW_BUILDS=esbuild,sharp" >> $GITHUB_ENV
-        env:
-          PNPM_ALLOW_BUILDS: esbuild,sharp
+          echo "✅ Approving build scripts for esbuild and sharp (pnpm 11+ security)..."
+          pnpm approve-builds esbuild@0.25.12 esbuild@0.27.3 sharp@0.34.5 || echo "Build scripts already approved"
 
       - name: Configure pnpm PATH and verify availability
         run: |
@@ -195,12 +194,14 @@ jobs:
           node-version: 22
           cache: 'pnpm'
 
-      # CRITICAL FIX for pnpm 11+ security: Configure build scripts
-      - name: Configure pnpm build scripts (pnpm 11+ compatible)
+      # CRITICAL FIX for pnpm 11+ security: Approve build scripts
+      # pnpm 11+ ignores build scripts by default for security reasons
+      # esbuild and sharp are required devDependencies for Astro builds
+      # Must use pnpm approve-builds command (PNPM_ALLOW_BUILDS env var doesn't work in pnpm 11+)
+      - name: Approve build scripts for required packages
         run: |
-          echo "PNPM_ALLOW_BUILDS=esbuild,sharp" >> $GITHUB_ENV
-        env:
-          PNPM_ALLOW_BUILDS: esbuild,sharp
+          echo "✅ Approving build scripts for esbuild and sharp (pnpm 11+ security)..."
+          pnpm approve-builds esbuild@0.25.12 esbuild@0.27.3 sharp@0.34.5 || echo "Build scripts already approved"
 
       - name: Update browser compatibility data
         run: |
