@@ -52,6 +52,7 @@ jobs:
         with:
           version: 11.21.0
           run_install: true  # Install dependencies AND make pnpm available globally
+          standalone: true    # Make pnpm available immediately without Node.js setup
         env:
           PNPM_HOME: /home/runner/.pnpm-global  # Use persistent path for consistency
       
@@ -307,6 +308,7 @@ jobs:
         with:
           version: 11.21.0
           run_install: true
+          standalone: true    # Make pnpm available immediately
         env:
           PNPM_HOME: /home/runner/.pnpm-global
       
