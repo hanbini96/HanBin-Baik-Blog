@@ -52,10 +52,8 @@ jobs:
         with:
           version: 11.21.0
           run_install: false
-          ignore-off: true
         env:
           PNPM_HOME: /home/runner/.pnpm-global
-          PATH: /home/runner/.pnpm-global/bin:/usr/local/bin:/usr/bin:/bin
       
       - name: Set up Node.js with pnpm cache
         uses: actions/setup-node@v4
@@ -216,10 +214,8 @@ jobs:
         with:
           version: 11.21.0
           run_install: false
-          ignore-off: true
         env:
           PNPM_HOME: /home/runner/.pnpm-global
-          PATH: /home/runner/.pnpm-global/bin:/usr/local/bin:/usr/bin:/bin
       
       - name: Configure PATH for global binaries
         run: |
