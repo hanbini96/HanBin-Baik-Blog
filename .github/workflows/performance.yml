@@ -28,6 +28,8 @@ env:
   LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
   PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
   PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+  PORT: 4321
+  PNPM_HOME: /home/runner/.pnpm-global
 
 permissions:
   contents: write
@@ -51,10 +53,16 @@ jobs:
         id: pnpm-setup
         with:
           version: 11.21.0
-          run_install: true  # Install dependencies AND make pnpm available globally
-          standalone: true    # Make pnpm available immediately without Node.js setup
-        env:
-          PNPM_HOME: /home/runner/.pnpm-global  # Use persistent path for consistency
+          run_install: true
+          standalone: true
+      
+      - name: Standardize PNPM_HOME location
+        run: |
+          # Override PNPM_HOME that was set by pnpm/action-setup
+          echo "PNPM_HOME=/home/runner/.pnpm-global" >> $GITHUB_ENV
+          echo "/home/runner/.pnpm-global/bin" >> $GITHUB_PATH
+          mkdir -p /home/runner/.pnpm-global/bin
+          echo "✅ PNPM_HOME standardized to: /home/runner/.pnpm-global"
       
       - name: Set up Node.js with pnpm cache
         uses: actions/setup-node@v4
@@ -63,31 +71,27 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: '**/pnpm-lock.yaml'
       
-      - name: Final pnpm setup
-        run: pnpm setup
-      
       - name: Configure PATH for global binaries
         id: path-config
         run: |
-          # Use robust fallback method with multiple fallbacks
-          # Fallback chain: pnpm config → hardcoded path → environment variable
-          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || \
-                           echo "$HOME/.pnpm-global/bin")
+          # Standardize PNPM_HOME
+          echo "PNPM_HOME=/home/runner/.pnpm-global" >> $GITHUB_ENV
           
-          echo "PNPM_GLOBAL_BIN=$PNPM_GLOBAL_BIN" >> $GITHUB_ENV
-          echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
+          # Add PNPM global bin to PATH
+          echo "$PNPM_HOME/bin" >> $GITHUB_PATH
           
-          # Add additional critical paths
-          echo "$HOME/.pnpm-global/bin" >> $GITHUB_PATH
+          # Add node_modules/.bin to PATH
           echo "$(pwd)/node_modules/.bin" >> $GITHUB_PATH
+          
+          # Add current directory bin to PATH
           echo "$(pwd)/bin" >> $GITHUB_PATH
           
           # Create directory if it doesn't exist
-          mkdir -p "$PNPM_GLOBAL_BIN"
+          mkdir -p "$PNPM_HOME/bin"
           
           # Comprehensive PATH verification
           echo "🔧 PATH Configuration:"
-          echo "PNPM Global Bin: $PNPM_GLOBAL_BIN"
+          echo "PNPM Global Bin: $PNPM_HOME/bin"
           echo "Current PATH: $PATH"
           
           # Verify critical commands are available
@@ -95,7 +99,6 @@ jobs:
             echo "❌ ERROR: pnpm is not available in PATH"
             echo "Available commands: $(compgen -c | grep -E 'pnpm|node|npm' | head -20)"
             echo "PNPM_HOME env: $PNPM_HOME"
-            pnpm config get global-bin-dir || true
             which pnpm || true
             echo "🔧 PATH contents:"
             echo "$PATH" | tr ':' '\n'
@@ -107,12 +110,12 @@ jobs:
           fi
           
           pnpm --version
-          echo "✅ PATH configured successfully: $PNPM_GLOBAL_BIN added to PATH"
+          echo "✅ PATH configured successfully: $PNPM_HOME/bin added to PATH"
+      
       # CRITICAL FIX for pnpm 11+ security: Configure build scripts
       # pnpm 11+ ignores build scripts by default for security reasons
       # esbuild and sharp are required devDependencies for Astro builds
       # Must use pnpm approve-builds command (PNPM_ALLOW_BUILDS env var doesn't work in pnpm 11+)
-      # This MUST come AFTER PATH configuration
       - name: Approve build scripts for required packages
         run: |
           echo "✅ Approving build scripts for esbuild and sharp (pnpm 11+ security)..."
@@ -167,21 +170,22 @@ jobs:
         id: server-start
         run: |
           echo "🚀 Starting Astro server for performance testing..."
+          echo "📊 Using PORT: $PORT (configured in workflow)"
           
-          # Start server in background
-          pnpm preview > /tmp/astro-server.log 2>&1 &
+          # Start server in background with explicit port
+          pnpm preview --port $PORT > /tmp/astro-server.log 2>&1 &
           SERVER_PID=$!
           echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
           
-          # Wait for server to be ready (up to 60 seconds)
-          echo "⏳ Waiting for server to start on port 3000..."
-          TIMEOUT=60
+          # Wait for server to be ready (up to 30 seconds - should be fast)
+          echo "⏳ Waiting for server to start on port $PORT..."
+          TIMEOUT=30
           START_TIME=$(date +%s)
           
           while true; do
             # Check if server is responding
-            if curl -s http://localhost:3000 >/dev/null 2>&1; then
-              echo "✅ Server started successfully on port 3000"
+            if curl -s http://localhost:$PORT >/dev/null 2>&1; then
+              echo "✅ Server started successfully on port $PORT"
               break
             fi
             
@@ -191,6 +195,12 @@ jobs:
             
             if [ $ELAPSED -ge $TIMEOUT ]; then
               echo "❌ ERROR: Server failed to start within $TIMEOUT seconds"
+              echo "📝 Debug Information:"
+              echo "   - Expected port: $PORT"
+              echo "   - Current PATH: $PATH"
+              echo "   - PNPM_HOME: $PNPM_HOME"
+              echo "   - pnpm available: $(command -v pnpm || echo 'NOT FOUND')"
+              echo "   - astro available: $(command -v astro || echo 'NOT FOUND')"
               echo "Last 20 lines of server log:"
               tail -20 /tmp/astro-server.log
               kill $SERVER_PID 2>/dev/null || true
@@ -203,7 +213,7 @@ jobs:
           done
           
           # Verify server is running
-          SERVER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/)
+          SERVER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$PORT/)
           if [ "$SERVER_STATUS" != "200" ]; then
             echo "❌ ERROR: Server returned status $SERVER_STATUS"
             echo "Server log:"
@@ -214,6 +224,7 @@ jobs:
           
           echo "✅ Server is responding correctly (HTTP 200)"
           echo "📊 Server PID: $SERVER_PID"
+          echo "🌐 Server URL: http://localhost:$PORT/"
       
       - name: Install Lighthouse CLI globally
         run: |
@@ -248,9 +259,9 @@ jobs:
         continue-on-error: true
         with:
           urls: |
-            http://localhost:3000/
-            http://localhost:3000/blog
-            http://localhost:3000/about
+            http://localhost:$PORT/
+            http://localhost:$PORT/blog
+            http://localhost:$PORT/about
           uploadArtifacts: true
           artifactName: "lighthouse-results"
           temporaryPublicStorage: true
@@ -263,16 +274,16 @@ jobs:
             echo "🛑 Stopping Astro server..."
             kill ${{ env.SERVER_PID }} 2>/dev/null || true
             
-            # Additional cleanup
+            # Additional cleanup - match exact start command
             sleep 2
-            pkill -f "pnpm preview" 2>/dev/null || true
-            pkill -f "astro preview" 2>/dev/null || true
+            pkill -f "pnpm preview --port $PORT" 2>/dev/null || true
+            pkill -f "astro preview --port $PORT" 2>/dev/null || true
             
             # Verify server is stopped
-            if curl -s http://localhost:3000 >/dev/null 2>&1; then
+            if curl -s http://localhost:$PORT >/dev/null 2>&1; then
               echo "⚠️ Server may still be running, attempting force kill"
-              pkill -9 -f "pnpm preview" 2>/dev/null || true
-              pkill -9 -f "astro preview" 2>/dev/null || true
+              pkill -9 -f "pnpm preview --port $PORT" 2>/dev/null || true
+              pkill -9 -f "astro preview --port $PORT" 2>/dev/null || true
             fi
             
             echo "✅ Server stopped successfully"
@@ -452,3 +463,117 @@ jobs:
           echo "======================================"
           echo ""
           echo "✅ Workflow completed successfully"
+
+  lighthouse-live:
+    name: 🌐 Lighthouse Live Site Audit
+    needs: lighthouse
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev-update' || startsWith(github.ref, 'refs/heads/fix/')
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Lighthouse CLI globally
+        run: |
+          echo "📦 Installing Lighthouse CLI..."
+          npm install -g lighthouse
+          lighthouse --version
+
+      - name: Run Lighthouse on Live GitHub Pages
+        id: lighthouse-live
+        run: |
+          echo "🔍 Auditing live site: https://hanbini96.github.io/HanBin-Baik-Blog/"
+          echo "📊 Testing URLs:"
+          echo "  - https://hanbini96.github.io/HanBin-Baik-Blog/"
+          echo "  - https://hanbini96.github.io/HanBin-Baik-Blog/blog"
+          echo "  - https://hanbini96.github.io/HanBin-Baik-Blog/about"
+          
+          # Run Lighthouse audit
+          lighthouse https://hanbini96.github.io/HanBin-Baik-Blog/ \
+            https://hanbini96.github.io/HanBin-Baik-Blog/blog \
+            https://hanbini96.github.io/HanBin-Baik-Blog/about \
+            --output=html --output-path=./lighthouse-report-live.html \
+            --chrome-flags="--no-sandbox --headless --disable-gpu" \
+            --only-categories=performance,accessibility,best-practices,seo \
+            --throttling.cpuSlowdown=2
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+
+      - name: Upload Live Site Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-live-report-${{ github.sha }}
+          path: |
+            lighthouse-report-live.html
+            lighthouse-report-live.json
+          retention-days: 30
+
+      - name: Create GitHub Issue on Regression (if audit fails)
+        if: failure() && steps.lighthouse-live.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueTitle = '[Performance] 🚨 Live Site Performance Regression Detected';
+            const issueBody = `## Performance Regression Alert 🚨
+
+**Site**: https://hanbini96.github.io/HanBin-Baik-Blog/
+**Workflow**: https://github.com/hanbini96/HanBin-Baik-Blog/actions/runs/${{ github.run_id }}
+**Detected**: ${{ github.event.repository.updated_at }}
+
+### 📊 Audit Results:
+- Status: **FAILED** ❌
+- The live site performance audit detected issues
+
+### 🔍 Next Steps:
+1. 📥 Download the Lighthouse report artifact below
+2. 🔍 Review performance metrics and recommendations
+3. 🛠️ Investigate recent changes that may have caused regression
+4. 🎯 Create fix branch and address the performance issues
+
+### 📁 Artifacts:
+- [Download Lighthouse Report](https://github.com/hanbini96/HanBin-Baik-Blog/actions/runs/${{ github.run_id }}#artifacts)
+
+---
+
+**Automated by**: GitHub Actions - performance.yml
+**Branch**: ${{ github.ref_name }}
+**Commit**: ${{ github.sha }}`;
+            
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: issueTitle,
+              body: issueBody,
+              labels: ['performance', 'regression', 'automated', 'critical']
+            });
+
+      - name: Performance Summary
+        if: success()
+        run: |
+          echo "🎉 Live Site Performance Audit PASSED! ✅"
+          echo ""
+          echo "📊 Audit completed successfully"
+          echo "🌐 Site tested: https://hanbini96.github.io/HanBin-Baik-Blog/"
+          echo "📁 Report saved: lighthouse-report-live.html"
+          echo ""
+          echo "🎯 Next Steps:"
+          echo "1. Review the uploaded report artifact"
+          echo "2. Track performance trends over time"
+          echo "3. Set up monitoring for future regressions"
+          
+          # Extract basic metrics from JSON report
+          if [ -f lighthouse-report-live.json ]; then
+            echo ""
+            echo "📈 Key Metrics:"
+            echo "Performance Score: $(jq -r '.categories.performance.score * 100 | floor' lighthouse-report-live.json) %"
+            echo "Accessibility Score: $(jq -r '.categories.accessibility.score * 100 | floor' lighthouse-report-live.json) %"
+            echo "Best Practices Score: $(jq -r '.categories["best-practices"].score * 100 | floor' lighthouse-report-live.json) %"
+            echo "SEO Score: $(jq -r '.categories.seo.score * 100 | floor' lighthouse-report-live.json) %"
+          fi
