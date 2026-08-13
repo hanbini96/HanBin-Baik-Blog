@@ -19,6 +19,7 @@ jobs:
     env:
       PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      PORT: 4321
       LAST_BUILD: ${{ github.sha }}
       LAST_COMMIT: ${{ github.event.head_commit.message }}
       BUILD_TIMESTAMP: ${{ github.event.repository.updated_at }}

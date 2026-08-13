@@ -167,6 +167,7 @@ jobs:
         id: server-start
         run: |
           echo "🚀 Starting Astro server for performance testing..."
+          echo "📊 Using PORT: $PORT (configured in workflow)"
           
           # Start server in background with explicit port
           pnpm preview --port $PORT > /tmp/astro-server.log 2>&1 &
@@ -191,6 +192,12 @@ jobs:
             
             if [ $ELAPSED -ge $TIMEOUT ]; then
               echo "❌ ERROR: Server failed to start within $TIMEOUT seconds"
+              echo "📝 Debug Information:"
+              echo "   - Expected port: $PORT"
+              echo "   - Current PATH: $PATH"
+              echo "   - PNPM_HOME: $PNPM_HOME"
+              echo "   - pnpm available: $(command -v pnpm || echo 'NOT FOUND')"
+              echo "   - astro available: $(command -v astro || echo 'NOT FOUND')"
               echo "Last 20 lines of server log:"
               tail -20 /tmp/astro-server.log
               kill $SERVER_PID 2>/dev/null || true
@@ -214,6 +221,7 @@ jobs:
           
           echo "✅ Server is responding correctly (HTTP 200)"
           echo "📊 Server PID: $SERVER_PID"
+          echo "🌐 Server URL: http://localhost:$PORT/"
       
       - name: Install Lighthouse CLI globally
         run: |
