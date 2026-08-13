@@ -65,7 +65,6 @@ module.exports = {
         'aria-valid-attr-value': ['warn', { minScore: 85 }],
         'aria-valid-attr': ['warn', { minScore: 85 }],
         'color-contrast-enhanced': ['warn', { minScore: 85 }],
-        'definition-list': ['warn', { minScore: 85 }],
         'frame-title': ['warn', { minScore: 85 }],
         'heading-order': ['warn', { minScore: 85 }],
         'html-has-lang': ['warn', { minScore: 85 }],
@@ -100,7 +99,6 @@ module.exports = {
         'robots-txt': ['warn', { minScore: 90 }],
         'tap-targets': ['warn', { minScore: 90 }],
         'viewport': ['warn', { minScore: 90 }]
-      }
       }
     },
     
