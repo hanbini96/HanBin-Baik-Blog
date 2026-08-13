@@ -54,6 +54,8 @@ jobs:
           version: 11.21.0
           run_install: false
           ignore-off: true
+        env:
+          PNPM_HOME: /home/runner/.pnpm-global
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -101,8 +103,8 @@ jobs:
       
       - name: Configure pnpm PATH for global binaries
         run: |
-          # Configure pnpm global bin directory
-          PNPM_GLOBAL_BIN="$HOME/.pnpm-global/bin"
+          # Get pnpm's actual global bin directory
+          PNPM_GLOBAL_BIN=$(pnpm bin -g)
           echo "PNPM_GLOBAL_BIN=$PNPM_GLOBAL_BIN" >> $GITHUB_ENV
           echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
           mkdir -p "$PNPM_GLOBAL_BIN"
