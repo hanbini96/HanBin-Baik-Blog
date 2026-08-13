@@ -28,6 +28,8 @@ env:
   LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
   PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
   PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+  PORT: 4321
+  PNPM_HOME: /home/runner/.pnpm-global
 
 permissions:
   contents: write
@@ -53,8 +55,6 @@ jobs:
           version: 11.21.0
           run_install: true  # Install dependencies AND make pnpm available globally
           standalone: true    # Make pnpm available immediately without Node.js setup
-        env:
-          PNPM_HOME: /home/runner/.pnpm-global  # Use persistent path for consistency
       
       - name: Set up Node.js with pnpm cache
         uses: actions/setup-node@v4
@@ -168,20 +168,20 @@ jobs:
         run: |
           echo "🚀 Starting Astro server for performance testing..."
           
-          # Start server in background
-          pnpm preview > /tmp/astro-server.log 2>&1 &
+          # Start server in background with explicit port
+          pnpm preview --port $PORT > /tmp/astro-server.log 2>&1 &
           SERVER_PID=$!
           echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
           
-          # Wait for server to be ready (up to 60 seconds)
-          echo "⏳ Waiting for server to start on port 3000..."
-          TIMEOUT=60
+          # Wait for server to be ready (up to 30 seconds - should be fast)
+          echo "⏳ Waiting for server to start on port $PORT..."
+          TIMEOUT=30
           START_TIME=$(date +%s)
           
           while true; do
             # Check if server is responding
-            if curl -s http://localhost:3000 >/dev/null 2>&1; then
-              echo "✅ Server started successfully on port 3000"
+            if curl -s http://localhost:$PORT >/dev/null 2>&1; then
+              echo "✅ Server started successfully on port $PORT"
               break
             fi
             
@@ -203,7 +203,7 @@ jobs:
           done
           
           # Verify server is running
-          SERVER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/)
+          SERVER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$PORT/)
           if [ "$SERVER_STATUS" != "200" ]; then
             echo "❌ ERROR: Server returned status $SERVER_STATUS"
             echo "Server log:"
@@ -263,16 +263,16 @@ jobs:
             echo "🛑 Stopping Astro server..."
             kill ${{ env.SERVER_PID }} 2>/dev/null || true
             
-            # Additional cleanup
+            # Additional cleanup - match exact start command
             sleep 2
-            pkill -f "pnpm preview" 2>/dev/null || true
-            pkill -f "astro preview" 2>/dev/null || true
+            pkill -f "pnpm preview --port $PORT" 2>/dev/null || true
+            pkill -f "astro preview --port $PORT" 2>/dev/null || true
             
             # Verify server is stopped
-            if curl -s http://localhost:3000 >/dev/null 2>&1; then
+            if curl -s http://localhost:$PORT >/dev/null 2>&1; then
               echo "⚠️ Server may still be running, attempting force kill"
-              pkill -9 -f "pnpm preview" 2>/dev/null || true
-              pkill -9 -f "astro preview" 2>/dev/null || true
+              pkill -9 -f "pnpm preview --port $PORT" 2>/dev/null || true
+              pkill -9 -f "astro preview --port $PORT" 2>/dev/null || true
             fi
             
             echo "✅ Server stopped successfully"
