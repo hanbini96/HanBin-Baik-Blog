@@ -263,26 +263,26 @@ jobs:
             ISSUE_TITLE="[Infrastructure] Critical Infrastructure Issue Detected"
             ISSUE_BODY="Infrastructure monitoring detected critical issues:
 
-## 🚨 Critical Infrastructure Alert
+          ## 🚨 Critical Infrastructure Alert
 
-The infrastructure health check failed on $(date -u +%Y-%m-%dT%H:%M:%SZ)
+          The infrastructure health check failed on $(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-### Failed Checks:
-- GitHub Pages: ${{ steps.pages-status.outputs.pages_enabled == 'false' && '❌ Disabled' || '✅ Enabled' }}
-- Supabase Connection: ${{ steps.supabase-check.outputs.supabase_connected == 'false' && '❌ Failed' || '✅ Connected' }}
-- Workflow Integrity: ${{ steps.workflow-integrity.outputs.workflow_valid == 'false' && '❌ Invalid' || '✅ Valid' }}
+          ### Failed Checks:
+          - GitHub Pages: ${{ steps.pages-status.outputs.pages_enabled == 'false' && '❌ Disabled' || '✅ Enabled' }}
+          - Supabase Connection: ${{ steps.supabase-check.outputs.supabase_connected == 'false' && '❌ Failed' || '✅ Connected' }}
+          - Workflow Integrity: ${{ steps.workflow-integrity.outputs.workflow_valid == 'false' && '❌ Invalid' || '✅ Valid' }}
 
-### Recommended Actions:
-1. Check GitHub Pages settings in repository
-2. Verify Supabase credentials are correct
-3. Review workflow file integrity
-4. Check GitHub Actions logs for details
+          ### Recommended Actions:
+          1. Check GitHub Pages settings in repository
+          2. Verify Supabase credentials are correct
+          3. Review workflow file integrity
+          4. Check GitHub Actions logs for details
 
----
+          ---
 
-**Workflow**: infrastructure.yml  
-**Run ID**: ${{ github.run_id }}  
-**Repository**: hanbini96/HanBin-Baik-Blog"
+          **Workflow**: infrastructure.yml
+          **Run ID**: ${{ github.run_id }}
+          **Repository**: hanbini96/HanBin-Baik-Blog"
 
             gh issue create \
               --title "$ISSUE_TITLE" \
