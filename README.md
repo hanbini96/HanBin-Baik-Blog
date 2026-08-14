@@ -13,6 +13,33 @@ Welcome to your **Astro + Supabase blog starter**! This repository contains a mi
 - **GitHub Actions workflow** to automatically build and deploy the site to GitHub Pages.
 - **Template‐ready**: you can mark this repo as a template in GitHub settings and use it for future projects.
 
+## 🌳 Branching & CI Strategy
+
+This repo runs a two-branch flow:
+
+- **`main`** — the release branch. This is what GitHub Pages deploys from, so it's treated as production for a public site.
+  - Changes land only via PR from `dev-update` (or an explicit `hotfix/*` branch for emergencies).
+  - No bypassing the PR requirement, including for the repo owner — every change to what's actually live gets a PR record.
+  - Required check before merge: `build` (the site actually builds). Monitoring/audit jobs (Lighthouse, infrastructure health, uptime) are **not** required checks — see "Why monitors aren't required checks" below.
+
+- **`dev-update`** — the integration hub. All feature/fix work lands here first, gets validated, and periodically gets synced to `main` via a PR.
+  - PRs required; direct pushes (including from the maintainer or an assisting coding agent, with explicit per-task authorization) are currently still possible pending a decision on standing agent-push policy - see [#110](https://github.com/hanbini96/HanBin-Baik-Blog/issues/110) for the related discussion on write-back behavior.
+  - Required checks before merge: `actionlint` (catches broken workflow YAML before it ships - see [#107](https://github.com/hanbini96/HanBin-Baik-Blog/issues/107)) and `build`.
+
+- **Everything else** (`fix/*`, `claude/*`, feature branches) is disposable and unprotected.
+
+### Why monitors aren't required checks
+
+`performance.yml` (Lighthouse) and `infrastructure.yml` (health checks) run on a schedule and on every push/PR, but they are **informational, not merge-blocking**. This repo's history (see [#97](https://github.com/hanbini96/HanBin-Baik-Blog/issues/97), [#101](https://github.com/hanbini96/HanBin-Baik-Blog/issues/101), [#103](https://github.com/hanbini96/HanBin-Baik-Blog/issues/103)) is a record of what happens when CI gating gets tangled up with flaky, frequently-changing monitoring jobs: dozens of "fix the workflow" commits chasing symptoms, hand-copied setup steps drifting out of sync between `main` and `dev-update`, and at least one merge conflict (PR #91) caused directly by that drift. [PR #109](https://github.com/hanbini96/HanBin-Baik-Blog/pull/109) consolidated the pnpm/Node/cache setup into one composite action (`.github/actions/setup-pnpm`) shared by every workflow specifically to stop that pattern - fix it once, not four times.
+
+### Fork/secret safety
+
+Workflows trigger on `pull_request` (not `pull_request_target`), so a PR from a fork never runs with access to this repo's secrets. Keep it that way if this repo ever takes outside contributions.
+
+### Applying the branch rules
+
+The `main` ruleset described above (PR-required, no bypass, `build` required) needs to be configured in **Settings → Rules → Rulesets** - it isn't set via a file in this repo. As of this writing it still needs to be created/updated by a repo admin.
+
 ## 🧑‍💻 Getting Started
 
 1. **Clone or import the repository.**  Click the **“Use this template”** button on GitHub after you mark it as a template, or manually clone the repo.

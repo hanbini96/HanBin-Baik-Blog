@@ -18,6 +18,7 @@ env:
 
 permissions:
   contents: read
+  pull-requests: read
   issues: write
   checks: write
 
@@ -25,75 +26,19 @@ jobs:
   health-check:
     name: Infrastructure Health Check
     runs-on: ubuntu-latest
+    outputs:
+      pages_enabled: ${{ steps.pages-status.outputs.pages_enabled }}
+      supabase_connected: ${{ steps.supabase-check.outputs.supabase_connected }}
+      workflow_valid: ${{ steps.workflow-integrity.outputs.workflow_valid }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Set up pnpm with global bin directory
-        uses: pnpm/action-setup@v4
-        with:
-          version: 11.21.0
-          run_install: true
-          standalone: true
-        env:
-          PNPM_HOME: /home/runner/.pnpm-global
+      - name: Set up pnpm and Node.js
+        uses: ./.github/actions/setup-pnpm
 
-      - name: Configure PATH and verify pnpm availability
-        id: path-config
-        run: |
-          # Standardize PNPM_HOME location to persistent directory
-          echo "PNPM_HOME=/home/runner/.pnpm-global" >> $GITHUB_ENV
-          
-          # Get pnpm's global bin directory with MULTIPLE FALLBACKS
-          # Pattern from NODE_VERSION_GUIDE.md Issue #95 & #99 fixes
-          PNPM_GLOBAL_BIN=$(pnpm config get global-bin-dir 2>/dev/null || \
-                          pnpm bin -g 2>/dev/null || \
-                          echo "/home/runner/.pnpm-global/bin")
-          echo "PNPM_GLOBAL_BIN=$PNPM_GLOBAL_BIN" >> $GITHUB_ENV
-          
-          # Add critical paths to PATH with MULTIPLE FALLBACKS
-          # Pattern from NODE_VERSION_GUIDE.md Troubleshooting Issue 3b
-          echo "$PNPM_GLOBAL_BIN" >> $GITHUB_PATH
-          echo "$HOME/.pnpm-global/bin" >> $GITHUB_PATH
-          echo "$(pwd)/node_modules/.bin" >> $GITHUB_PATH
-          
-          # Create directories if they don't exist
-          mkdir -p "$PNPM_GLOBAL_BIN"
-          
-          # Debug output for troubleshooting (from PR #104)
-          echo "🔧 PATH Configuration:"
-          echo "PNPM_HOME: $PNPM_HOME"
-          echo "PNPM_GLOBAL_BIN: $PNPM_GLOBAL_BIN"
-          
-          # Verify pnpm is available BEFORE proceeding (from PR #104)
-          if ! command -v pnpm &> /dev/null; then
-            echo "❌ CRITICAL ERROR: pnpm is not available in PATH"
-            echo "Current PATH: $PATH"
-            which pnpm || true
-            echo "🔧 Available commands:"
-            compgen -c | grep -E 'pnpm|node|npm' | head -20 || true
-            exit 1
-          fi
-          
-          pnpm --version
-          echo "✅ pnpm verified: $(pnpm --version)"
-      
-      - name: Set up Node.js with pnpm cache
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'pnpm'
-      
-      # CRITICAL FIX: pnpm 11+ ignores build scripts by default for security
-      # esbuild and sharp are required for Astro builds
-      # Must use pnpm approve-builds command (PNPM_ALLOW_BUILDS env var doesn't work in pnpm 11+)
-      - name: Approve build scripts for PNPM 11+ security
-        run: |
-          echo "🔒 Approving build scripts for esbuild and sharp (PNPM 11+ security)..."
-          pnpm approve-builds esbuild sharp || echo "⚠️ Build scripts already approved"
-      
       - name: Debug environment and paths
         if: always()
         run: |
@@ -108,9 +53,6 @@ jobs:
           echo ""
           echo "📁 node_modules/.bin contents:"
           ls -la node_modules/.bin 2>/dev/null || echo "node_modules/.bin not found"
-          echo ""
-          echo "📁 $PNPM_GLOBAL_BIN contents:"
-          ls -la "$PNPM_GLOBAL_BIN" 2>/dev/null || echo "PNPM_GLOBAL_BIN not accessible"
           echo ""
           echo "🔧 PATH verification:"
           echo "PATH: $PATH"
@@ -231,7 +173,7 @@ jobs:
           
           # Create a simple status file
           echo "$STATUS" > .infrastructure-status.txt
-          echo "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> .infrastructure-status.txt
+          date -u +%Y-%m-%dT%H:%M:%SZ >> .infrastructure-status.txt
 
       - name: Upload infrastructure report
         if: always()
@@ -255,41 +197,41 @@ jobs:
           echo ""
           echo "The infrastructure monitoring detected issues:"
           echo ""
-          echo "❌ GitHub Pages: ${{ steps.pages-status.outputs.pages_enabled == 'false' && 'Disabled' || 'OK' }}"
-          echo "❌ Supabase: ${{ steps.supabase-check.outputs.supabase_connected == 'false' && 'Disconnected' || 'OK' }}"
-          echo "❌ Workflow Integrity: ${{ steps.workflow-integrity.outputs.workflow_valid == 'false' && 'Invalid' || 'OK' }}"
+          echo "❌ GitHub Pages: ${{ needs.health-check.outputs.pages_enabled == 'false' && 'Disabled' || 'OK' }}"
+          echo "❌ Supabase: ${{ needs.health-check.outputs.supabase_connected == 'false' && 'Disconnected' || 'OK' }}"
+          echo "❌ Workflow Integrity: ${{ needs.health-check.outputs.workflow_valid == 'false' && 'Invalid' || 'OK' }}"
           echo ""
           echo "🔧 Please investigate immediately!"
-          
+
           # Create GitHub issue if needed
-          if [ "${{ steps.pages-status.outputs.pages_enabled }}" = "false" ] || \
-           [ "${{ steps.supabase-check.outputs.supabase_connected }}" = "false" ] || \
-           [ "${{ steps.workflow-integrity.outputs.workflow_valid }}" = "false" ]; then
+          if [ "${{ needs.health-check.outputs.pages_enabled }}" = "false" ] || \
+           [ "${{ needs.health-check.outputs.supabase_connected }}" = "false" ] || \
+           [ "${{ needs.health-check.outputs.workflow_valid }}" = "false" ]; then
             echo "Creating GitHub issue for infrastructure failure..."
-            
+
             ISSUE_TITLE="[Infrastructure] Critical Infrastructure Issue Detected"
             ISSUE_BODY="Infrastructure monitoring detected critical issues:
 
-## 🚨 Critical Infrastructure Alert
+          ## 🚨 Critical Infrastructure Alert
 
-The infrastructure health check failed on $(date -u +%Y-%m-%dT%H:%M:%SZ)
+          The infrastructure health check failed on $(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-### Failed Checks:
-- GitHub Pages: ${{ steps.pages-status.outputs.pages_enabled == 'false' && '❌ Disabled' || '✅ Enabled' }}
-- Supabase Connection: ${{ steps.supabase-check.outputs.supabase_connected == 'false' && '❌ Failed' || '✅ Connected' }}
-- Workflow Integrity: ${{ steps.workflow-integrity.outputs.workflow_valid == 'false' && '❌ Invalid' || '✅ Valid' }}
+          ### Failed Checks:
+          - GitHub Pages: ${{ needs.health-check.outputs.pages_enabled == 'false' && '❌ Disabled' || '✅ Enabled' }}
+          - Supabase Connection: ${{ needs.health-check.outputs.supabase_connected == 'false' && '❌ Failed' || '✅ Connected' }}
+          - Workflow Integrity: ${{ needs.health-check.outputs.workflow_valid == 'false' && '❌ Invalid' || '✅ Valid' }}
 
-### Recommended Actions:
-1. Check GitHub Pages settings in repository
-2. Verify Supabase credentials are correct
-3. Review workflow file integrity
-4. Check GitHub Actions logs for details
+          ### Recommended Actions:
+          1. Check GitHub Pages settings in repository
+          2. Verify Supabase credentials are correct
+          3. Review workflow file integrity
+          4. Check GitHub Actions logs for details
 
----
+          ---
 
-**Workflow**: infrastructure.yml  
-**Run ID**: ${{ github.run_id }}  
-**Repository**: hanbini96/HanBin-Baik-Blog"
+          **Workflow**: infrastructure.yml
+          **Run ID**: ${{ github.run_id }}
+          **Repository**: hanbini96/HanBin-Baik-Blog"
 
             gh issue create \
               --title "$ISSUE_TITLE" \
