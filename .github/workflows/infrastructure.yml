@@ -26,6 +26,10 @@ jobs:
   health-check:
     name: Infrastructure Health Check
     runs-on: ubuntu-latest
+    outputs:
+      pages_enabled: ${{ steps.pages-status.outputs.pages_enabled }}
+      supabase_connected: ${{ steps.supabase-check.outputs.supabase_connected }}
+      workflow_valid: ${{ steps.workflow-integrity.outputs.workflow_valid }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -169,7 +173,7 @@ jobs:
           
           # Create a simple status file
           echo "$STATUS" > .infrastructure-status.txt
-          echo "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> .infrastructure-status.txt
+          date -u +%Y-%m-%dT%H:%M:%SZ >> .infrastructure-status.txt
 
       - name: Upload infrastructure report
         if: always()
@@ -193,18 +197,18 @@ jobs:
           echo ""
           echo "The infrastructure monitoring detected issues:"
           echo ""
-          echo "❌ GitHub Pages: ${{ steps.pages-status.outputs.pages_enabled == 'false' && 'Disabled' || 'OK' }}"
-          echo "❌ Supabase: ${{ steps.supabase-check.outputs.supabase_connected == 'false' && 'Disconnected' || 'OK' }}"
-          echo "❌ Workflow Integrity: ${{ steps.workflow-integrity.outputs.workflow_valid == 'false' && 'Invalid' || 'OK' }}"
+          echo "❌ GitHub Pages: ${{ needs.health-check.outputs.pages_enabled == 'false' && 'Disabled' || 'OK' }}"
+          echo "❌ Supabase: ${{ needs.health-check.outputs.supabase_connected == 'false' && 'Disconnected' || 'OK' }}"
+          echo "❌ Workflow Integrity: ${{ needs.health-check.outputs.workflow_valid == 'false' && 'Invalid' || 'OK' }}"
           echo ""
           echo "🔧 Please investigate immediately!"
-          
+
           # Create GitHub issue if needed
-          if [ "${{ steps.pages-status.outputs.pages_enabled }}" = "false" ] || \
-           [ "${{ steps.supabase-check.outputs.supabase_connected }}" = "false" ] || \
-           [ "${{ steps.workflow-integrity.outputs.workflow_valid }}" = "false" ]; then
+          if [ "${{ needs.health-check.outputs.pages_enabled }}" = "false" ] || \
+           [ "${{ needs.health-check.outputs.supabase_connected }}" = "false" ] || \
+           [ "${{ needs.health-check.outputs.workflow_valid }}" = "false" ]; then
             echo "Creating GitHub issue for infrastructure failure..."
-            
+
             ISSUE_TITLE="[Infrastructure] Critical Infrastructure Issue Detected"
             ISSUE_BODY="Infrastructure monitoring detected critical issues:
 
@@ -213,9 +217,9 @@ jobs:
           The infrastructure health check failed on $(date -u +%Y-%m-%dT%H:%M:%SZ)
 
           ### Failed Checks:
-          - GitHub Pages: ${{ steps.pages-status.outputs.pages_enabled == 'false' && '❌ Disabled' || '✅ Enabled' }}
-          - Supabase Connection: ${{ steps.supabase-check.outputs.supabase_connected == 'false' && '❌ Failed' || '✅ Connected' }}
-          - Workflow Integrity: ${{ steps.workflow-integrity.outputs.workflow_valid == 'false' && '❌ Invalid' || '✅ Valid' }}
+          - GitHub Pages: ${{ needs.health-check.outputs.pages_enabled == 'false' && '❌ Disabled' || '✅ Enabled' }}
+          - Supabase Connection: ${{ needs.health-check.outputs.supabase_connected == 'false' && '❌ Failed' || '✅ Connected' }}
+          - Workflow Integrity: ${{ needs.health-check.outputs.workflow_valid == 'false' && '❌ Invalid' || '✅ Valid' }}
 
           ### Recommended Actions:
           1. Check GitHub Pages settings in repository

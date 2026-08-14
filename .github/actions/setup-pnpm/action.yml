@@ -26,8 +26,18 @@ runs:
         version: 11.21.0
         run_install: false
         standalone: true
-      env:
-        PNPM_HOME: /home/runner/.pnpm-global
+
+    # pnpm/action-setup does not reliably persist a custom PNPM_HOME to
+    # later steps (passing it as this step's `env:` only scopes it to the
+    # action's own process) - it falls back to its own tool-cache location,
+    # whose bin dir is never added to PATH, which breaks `pnpm add -g`.
+    # Set and export it explicitly so every later step agrees on one value.
+    - name: Configure PNPM_HOME
+      shell: bash
+      run: |
+        mkdir -p /home/runner/.pnpm-global
+        echo "PNPM_HOME=/home/runner/.pnpm-global" >> "$GITHUB_ENV"
+        echo "/home/runner/.pnpm-global" >> "$GITHUB_PATH"
 
     - name: Set up Node.js
       uses: actions/setup-node@v4
