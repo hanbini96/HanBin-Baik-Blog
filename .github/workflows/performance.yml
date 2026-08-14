@@ -506,28 +506,28 @@ jobs:
             const issueTitle = '[Performance] 🚨 Live Site Performance Regression Detected';
             const issueBody = `## Performance Regression Alert 🚨
 
-**Site**: https://hanbini96.github.io/HanBin-Baik-Blog/
-**Workflow**: https://github.com/hanbini96/HanBin-Baik-Blog/actions/runs/${{ github.run_id }}
-**Detected**: ${{ github.event.repository.updated_at }}
+            **Site**: https://hanbini96.github.io/HanBin-Baik-Blog/
+            **Workflow**: https://github.com/hanbini96/HanBin-Baik-Blog/actions/runs/${{ github.run_id }}
+            **Detected**: ${{ github.event.repository.updated_at }}
 
-### 📊 Audit Results:
-- Status: **FAILED** ❌
-- The live site performance audit detected issues
+            ### 📊 Audit Results:
+            - Status: **FAILED** ❌
+            - The live site performance audit detected issues
 
-### 🔍 Next Steps:
-1. 📥 Download the Lighthouse report artifact below
-2. 🔍 Review performance metrics and recommendations
-3. 🛠️ Investigate recent changes that may have caused regression
-4. 🎯 Create fix branch and address the performance issues
+            ### 🔍 Next Steps:
+            1. 📥 Download the Lighthouse report artifact below
+            2. 🔍 Review performance metrics and recommendations
+            3. 🛠️ Investigate recent changes that may have caused regression
+            4. 🎯 Create fix branch and address the performance issues
 
-### 📁 Artifacts:
-- [Download Lighthouse Report](https://github.com/hanbini96/HanBin-Baik-Blog/actions/runs/${{ github.run_id }}#artifacts)
+            ### 📁 Artifacts:
+            - [Download Lighthouse Report](https://github.com/hanbini96/HanBin-Baik-Blog/actions/runs/${{ github.run_id }}#artifacts)
 
----
+            ---
 
-**Automated by**: GitHub Actions - performance.yml
-**Branch**: ${{ github.ref_name }}
-**Commit**: ${{ github.sha }}`;
+            **Automated by**: GitHub Actions - performance.yml
+            **Branch**: ${{ github.ref_name }}
+            **Commit**: ${{ github.sha }}`;
             
             await github.rest.issues.create({
               owner: context.repo.owner,
