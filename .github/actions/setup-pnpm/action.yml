@@ -32,12 +32,13 @@ runs:
     # action's own process) - it falls back to its own tool-cache location,
     # whose bin dir is never added to PATH, which breaks `pnpm add -g`.
     # Set and export it explicitly so every later step agrees on one value.
+    # pnpm's global bin directory is $PNPM_HOME/bin, not $PNPM_HOME itself.
     - name: Configure PNPM_HOME
       shell: bash
       run: |
-        mkdir -p /home/runner/.pnpm-global
+        mkdir -p /home/runner/.pnpm-global/bin
         echo "PNPM_HOME=/home/runner/.pnpm-global" >> "$GITHUB_ENV"
-        echo "/home/runner/.pnpm-global" >> "$GITHUB_PATH"
+        echo "/home/runner/.pnpm-global/bin" >> "$GITHUB_PATH"
 
     - name: Set up Node.js
       uses: actions/setup-node@v4
