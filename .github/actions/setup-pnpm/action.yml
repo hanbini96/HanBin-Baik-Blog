@@ -1,0 +1,83 @@
+name: Set up pnpm and Node.js
+description: >
+  Single source of truth for pnpm + Node.js setup, shared by all workflows.
+  Restores/saves the pnpm store via an explicit actions/cache step instead of
+  actions/setup-node's built-in cache: 'pnpm' option, which is incompatible
+  with pnpm 11.x and causes a "Path Validation Error" during post-job cleanup
+  (see issue #97). Approves pnpm 11+ build scripts (esbuild, sharp) before
+  installing, so the approval actually takes effect on that install.
+
+inputs:
+  node-version:
+    description: Node.js version to install
+    required: false
+    default: '22'
+  install:
+    description: Whether to run `pnpm install --frozen-lockfile`
+    required: false
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    - name: Set up pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 11.21.0
+        run_install: false
+        standalone: true
+
+    # pnpm/action-setup does not reliably persist a custom PNPM_HOME to
+    # later steps (passing it as this step's `env:` only scopes it to the
+    # action's own process) - it falls back to its own tool-cache location,
+    # whose bin dir is never added to PATH, which breaks `pnpm add -g`.
+    # Set and export it explicitly so every later step agrees on one value.
+    # pnpm's global bin directory is $PNPM_HOME/bin, not $PNPM_HOME itself.
+    - name: Configure PNPM_HOME
+      shell: bash
+      run: |
+        mkdir -p /home/runner/.pnpm-global/bin
+        echo "PNPM_HOME=/home/runner/.pnpm-global" >> "$GITHUB_ENV"
+        echo "/home/runner/.pnpm-global/bin" >> "$GITHUB_PATH"
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Verify pnpm is available
+      shell: bash
+      run: |
+        if ! command -v pnpm &> /dev/null; then
+          echo "❌ CRITICAL ERROR: pnpm is not available in PATH"
+          echo "Current PATH: $PATH"
+          which pnpm || true
+          exit 1
+        fi
+        echo "✅ pnpm verified: $(pnpm --version)"
+
+    - name: Resolve pnpm store path
+      id: pnpm-store
+      shell: bash
+      run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+    - name: Restore pnpm store cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.pnpm-store.outputs.path }}
+        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-pnpm-store-
+
+    # pnpm 11+ ignores build scripts by default for security. esbuild and
+    # sharp are required for Astro builds. This must run BEFORE install so
+    # the approval actually applies to that install (PNPM_ALLOW_BUILDS does
+    # not work in pnpm 11+).
+    - name: Approve build scripts for pnpm 11+ security
+      shell: bash
+      run: pnpm approve-builds esbuild sharp || echo "⚠️ Build scripts already approved"
+
+    - name: Install project dependencies
+      if: inputs.install == 'true'
+      shell: bash
+      run: pnpm install --frozen-lockfile
