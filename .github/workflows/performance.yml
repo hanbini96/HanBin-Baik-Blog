@@ -44,7 +44,7 @@ jobs:
         if: always()
         run: |
           echo "🔍 Environment Debug Information:"
-          echo "================================"
+          echo "==============================="
           echo ""
           echo "📊 Current working directory:"
           pwd
@@ -313,9 +313,32 @@ jobs:
           fi
         continue-on-error: true
 
-      - name: Create Pull Request to main
+      - name: Create Pull Request to dev-update
         if: steps.commit-metrics.outputs.HAS_CHANGES == 'true'
-        id: create-pr
+        id: pr-dev-update
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'chore: Update performance metrics',
+              head: process.env.TEMP_BRANCH,
+              base: 'dev-update',
+              body: `Automated performance metrics update from workflow run ${context.runId}
+
+**Workflow**: ${context.workflow}
+**Trigger**: ${context.eventName}
+
+This PR updates performance history metrics collected from Lighthouse audits.`,
+            });
+            console.log(`✅ Created PR to dev-update #${pr.number}: ${pr.html_url}`);
+            core.setOutput('pr_number', pr.number);
+            core.setOutput('pr_url', pr.html_url);
+        continue-on-error: true
+
+      - name: Create Pull Request to main
+        if: steps.pr-dev-update.outcome == 'success'
         uses: actions/github-script@v7
         with:
           script: |
@@ -323,54 +346,35 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: 'chore: Update performance metrics',
-              head: process.env.TEMP_BRANCH,
+              head: 'dev-update',
               base: 'main',
-              body: `Automated performance metrics update from workflow run ${context.runId}
+              body: `Automated performance metrics update
 
-**Workflow**: ${context.workflow}
-**Trigger**: ${context.eventName}
+This PR merges performance metrics from dev-update to main.
 
-This PR updates performance history metrics collected from Lighthouse audits.`,
-              maintainer_can_modify: false
+**Source PR**: #${{ steps.pr-dev-update.outputs.pr_number }}`
             });
-            
-            console.log(`✅ Created PR #${pr.data.number}: ${pr.data.html_url}`);
-            
-            # Set outputs for downstream steps
-            core.setOutput('pr_number', pr.data.number);
-            core.setOutput('pr_url', pr.data.html_url);
-            
-            # Auto-merge if possible
+            console.log(`✅ Created PR to main #${pr.number}: ${pr.html_url}`);
+
+            # Auto-merge to main if possible
             try {
               await github.rest.pulls.merge({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                pull_number: pr.data.number,
+                pull_number: pr.number,
                 merge_method: 'squash'
               });
-              console.log(`✅ PR #${pr.data.number} auto-merged successfully`);
-              core.setOutput('merged', 'true');
-            } catch (mergeError) {
-              console.log(`ℹ️ PR #${pr.data.number} created but requires manual review`);
-              core.setOutput('merged', 'false');
+              console.log(`✅ PR to main auto-merged`);
+            } catch (e) {
+              console.log('PR to main created, requires manual review');
             }
         continue-on-error: true
 
-      - name: Performance Metrics Update Complete
+      - name: Cleanup temp branch
         if: always()
         run: |
-          if [ "${{ steps.commit-metrics.outputs.HAS_CHANGES }}" == "true" ]; then
-            if [ "${{ steps.create-pr.outputs.merged }}" == "true" ]; then
-              echo "✅ Performance metrics update completed and auto-merged!"
-              echo "🔗 PR #${{ steps.create-pr.outputs.pr_number }}: ${{ steps.create-pr.outputs.pr_url }}"
-            else
-              echo "✅ Performance metrics update completed! PR created for review:"
-              echo "🔗 PR #${{ steps.create-pr.outputs.pr_number }}: ${{ steps.create-pr.outputs.pr_url }}"
-              echo "ℹ️ PR requires manual review before merging"
-            fi
-          else
-            echo "ℹ️ No performance metric changes detected"
-          fi
+          git push origin --delete "$TEMP_BRANCH" 2>/dev/null || true
+          echo "🧹 Cleaned up temp branch: $TEMP_BRANCH"
 
   performance-summary:
     name: Generate Performance Summary
