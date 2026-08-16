@@ -20,7 +20,7 @@ env:
 
 permissions:
   contents: write
-  pull-requests: read
+  pull-requests: write
   issues: write
   pages: read
   checks: write
@@ -291,17 +291,85 @@ jobs:
           cat .performance-history/perf-$TIMESTAMP.json | head -20
       
       - name: Commit performance metrics
+        id: commit-metrics
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add .performance-history/
           
           if ! git diff --cached --quiet; then
+            # Create temp branch name with timestamp
+            TEMP_BRANCH="perf-metrics-$(date +%Y%m%d-%H%M%S)"
+            git checkout -b "$TEMP_BRANCH" main
             git commit -m "chore: Update performance metrics [skip ci]"
-            git push
-            echo "✅ Performance metrics committed and pushed"
+            git push origin "$TEMP_BRANCH"
+            
+            echo "✅ Performance metrics committed to temp branch: $TEMP_BRANCH"
+            echo "TEMP_BRANCH=$TEMP_BRANCH" >> $GITHUB_ENV
+            echo "HAS_CHANGES=true" >> $GITHUB_OUTPUT
           else
             echo "ℹ️ No changes in performance metrics"
+            echo "HAS_CHANGES=false" >> $GITHUB_OUTPUT
+          fi
+        continue-on-error: true
+
+      - name: Create Pull Request to main
+        if: steps.commit-metrics.outputs.HAS_CHANGES == 'true'
+        id: create-pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'chore: Update performance metrics',
+              head: process.env.TEMP_BRANCH,
+              base: 'main',
+              body: `Automated performance metrics update from workflow run ${context.runId}
+
+**Workflow**: ${context.workflow}
+**Trigger**: ${context.eventName}
+
+This PR updates performance history metrics collected from Lighthouse audits.`,
+              maintainer_can_modify: false
+            });
+            
+            console.log(`✅ Created PR #${pr.data.number}: ${pr.data.html_url}`);
+            
+            # Set outputs for downstream steps
+            core.setOutput('pr_number', pr.data.number);
+            core.setOutput('pr_url', pr.data.html_url);
+            
+            # Auto-merge if possible
+            try {
+              await github.rest.pulls.merge({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.data.number,
+                merge_method: 'squash'
+              });
+              console.log(`✅ PR #${pr.data.number} auto-merged successfully`);
+              core.setOutput('merged', 'true');
+            } catch (mergeError) {
+              console.log(`ℹ️ PR #${pr.data.number} created but requires manual review`);
+              core.setOutput('merged', 'false');
+            }
+        continue-on-error: true
+
+      - name: Performance Metrics Update Complete
+        if: always()
+        run: |
+          if [ "${{ steps.commit-metrics.outputs.HAS_CHANGES }}" == "true" ]; then
+            if [ "${{ steps.create-pr.outputs.merged }}" == "true" ]; then
+              echo "✅ Performance metrics update completed and auto-merged!"
+              echo "🔗 PR #${{ steps.create-pr.outputs.pr_number }}: ${{ steps.create-pr.outputs.pr_url }}"
+            else
+              echo "✅ Performance metrics update completed! PR created for review:"
+              echo "🔗 PR #${{ steps.create-pr.outputs.pr_number }}: ${{ steps.create-pr.outputs.pr_url }}"
+              echo "ℹ️ PR requires manual review before merging"
+            fi
+          else
+            echo "ℹ️ No performance metric changes detected"
           fi
 
   performance-summary:
