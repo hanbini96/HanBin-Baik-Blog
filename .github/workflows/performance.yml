@@ -325,12 +325,7 @@ jobs:
               title: 'chore: Update performance metrics',
               head: process.env.TEMP_BRANCH,
               base: 'dev-update',
-              body: `Automated performance metrics update from workflow run ${context.runId}
-
-*Workflow*: ${context.workflow}
-*Trigger*: ${context.eventName}
-
-This PR updates performance history metrics collected from Lighthouse audits.`,
+              body: 'Automated performance metrics update from workflow run ${{ github.runId }}'
             });
             console.log(`✅ Created PR to dev-update #${pr.number}: ${pr.html_url}`);
             core.setOutput('pr_number', pr.number);
@@ -348,11 +343,7 @@ This PR updates performance history metrics collected from Lighthouse audits.`,
               title: 'chore: Update performance metrics',
               head: 'dev-update',
               base: 'main',
-              body: `Automated performance metrics update
-
-This PR merges performance metrics from dev-update to main.
-
-*Source PR*: #${{ steps.pr-dev-update.outputs.pr_number }}`
+              body: 'Automated performance metrics update from dev-update to main'
             });
             console.log(`✅ Created PR to main #${pr.number}: ${pr.html_url}`);
 
