@@ -327,8 +327,8 @@ jobs:
               base: 'dev-update',
               body: `Automated performance metrics update from workflow run ${context.runId}
 
-**Workflow**: ${context.workflow}
-**Trigger**: ${context.eventName}
+*Workflow*: ${context.workflow}
+*Trigger*: ${context.eventName}
 
 This PR updates performance history metrics collected from Lighthouse audits.`,
             });
@@ -352,7 +352,7 @@ This PR updates performance history metrics collected from Lighthouse audits.`,
 
 This PR merges performance metrics from dev-update to main.
 
-**Source PR**: #${{ steps.pr-dev-update.outputs.pr_number }}`
+*Source PR*: #${{ steps.pr-dev-update.outputs.pr_number }}`
             });
             console.log(`✅ Created PR to main #${pr.number}: ${pr.html_url}`);
 
@@ -471,12 +471,12 @@ This PR merges performance metrics from dev-update to main.
             const issueTitle = '[Performance] 🚨 Live Site Performance Regression Detected';
             const issueBody = `## Performance Regression Alert 🚨
 
-            **Site**: https://hanbini96.github.io/HanBin-Baik-Blog/
-            **Workflow**: https://github.com/hanbini96/HanBin-Baik-Blog/actions/runs/${{ github.run_id }}
-            **Detected**: ${{ github.event.repository.updated_at }}
+            *Site*: https://hanbini96.github.io/HanBin-Baik-Blog/
+            *Workflow*: https://github.com/hanbini96/HanBin-Baik-Blog/actions/runs/${{ github.run_id }}
+            *Detected*: ${{ github.event.repository.updated_at }}
 
             ### 📊 Audit Results:
-            - Status: **FAILED** ❌
+            - Status: *FAILED* ❌
             - The live site performance audit detected issues
 
             ### 🔍 Next Steps:
@@ -491,8 +491,8 @@ This PR merges performance metrics from dev-update to main.
             ---
 
             **Automated by**: GitHub Actions - performance.yml
-            **Branch**: ${{ github.ref_name }}
-            **Commit**: ${{ github.sha }}`;
+            *Branch*: ${{ github.ref_name }}
+            *Commit*: ${{ github.sha }}`;
             
             await github.rest.issues.create({
               owner: context.repo.owner,
