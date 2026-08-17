@@ -481,7 +481,7 @@ jobs:
 
             ---
 
-            **Automated by**: GitHub Actions - performance.yml
+            *Automated by*: GitHub Actions - performance.yml
             *Branch*: ${{ github.ref_name }}
             *Commit*: ${{ github.sha }}`;
             
