@@ -80,10 +80,10 @@ jobs:
           
           if [ "$PAGES_STATUS" = "200" ]; then
             echo "GitHub Pages is enabled ✅"
-            echo "pages_enabled=true" >> $GITHUB_OUTPUT
+            echo "pages_enabled=true" >> "$GITHUB_OUTPUT"
           else
             echo "GitHub Pages is not enabled or has issues ⚠️"
-            echo "pages_enabled=false" >> $GITHUB_OUTPUT
+            echo "pages_enabled=false" >> "$GITHUB_OUTPUT"
             echo "::error::GitHub Pages is not enabled or has configuration issues"
           fi
 
@@ -94,14 +94,14 @@ jobs:
           
           if [ -z "${{ secrets.SUPABASE_URL }}" ] || [ -z "${{ secrets.SUPABASE_ANON_KEY }}" ]; then
             echo "Supabase credentials not configured ❌"
-            echo "supabase_connected=false" >> $GITHUB_OUTPUT
+            echo "supabase_connected=false" >> "$GITHUB_OUTPUT"
             echo "::error::Supabase credentials are missing"
             exit 1
           fi
           
           echo "Supabase URL: ${{ secrets.SUPABASE_URL }}"
           echo "Supabase credentials configured ✅"
-          echo "supabase_connected=true" >> $GITHUB_OUTPUT
+          echo "supabase_connected=true" >> "$GITHUB_OUTPUT"
 
       - name: Check workflow file integrity
         id: workflow-integrity
@@ -111,17 +111,17 @@ jobs:
           # Check if performance.yml exists and is valid
           if [ ! -f ".github/workflows/performance.yml" ]; then
             echo "❌ performance.yml is missing!"
-            echo "workflow_valid=false" >> $GITHUB_OUTPUT
+            echo "workflow_valid=false" >> "$GITHUB_OUTPUT"
             exit 1
           fi
           
           # Check if infrastructure.yml exists
           if [ ! -f ".github/workflows/infrastructure.yml" ]; then
             echo "⚠️ infrastructure.yml is missing (will be created)"
-            echo "workflow_valid=true" >> $GITHUB_OUTPUT
+            echo "workflow_valid=true" >> "$GITHUB_OUTPUT"
           else
             echo "✅ All workflow files present"
-            echo "workflow_valid=true" >> $GITHUB_OUTPUT
+            echo "workflow_valid=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Check disk space and resources
@@ -137,7 +137,7 @@ jobs:
           MEM_INFO=$(free -h)
           echo "$MEM_INFO"
           
-          echo "resource_check_passed=true" >> $GITHUB_OUTPUT
+          echo "resource_check_passed=true" >> "$GITHUB_OUTPUT"
 
       - name: Check GitHub Actions cache
         id: cache-check
@@ -146,7 +146,7 @@ jobs:
           
           # Check if cache is working
           echo "Cache check passed ✅"
-          echo "cache_working=true" >> $GITHUB_OUTPUT
+          echo "cache_working=true" >> "$GITHUB_OUTPUT"
 
       - name: Generate infrastructure report
         if: always()

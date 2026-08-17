@@ -247,46 +247,45 @@ jobs:
           mkdir -p .performance-history
           TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
           DATE=$(date +%Y-%m-%d)
-          
+
+          PERF_SCORE=0
+          FCP=0
+          LCP=0
+          CLS=0.000
+          FID=0
+          TBT=0
+
+          echo "Extracting performance metrics..."
+
+          REPORT=".lighthouseci/manifest.json"
+          if [ -f "$REPORT" ]; then
+            echo "Processing $REPORT..."
+
+            PERF_SCORE=$(node -e "try { const data = require('./' + process.argv[1]); const results = data.map(r => r.summary?.categories?.performance); const avg = results.reduce((a,b) => a + (b||0), 0) / results.length; console.log(Math.round(avg * 100)); } catch(e) { console.log('0'); } " "$REPORT")
+            LCP=$(node -e "try { const data = require('./' + process.argv[1]); const results = data.map(r => r.summary?.audits?.['largest-contentful-paint']?.numericValue || 0); const avg = results.reduce((a,b) => a + b, 0) / results.length; console.log(Math.round(avg)); } catch(e) { console.log('0'); } " "$REPORT")
+            FCP=$(node -e "try { const data = require('./' + process.argv[1]); const results = data.map(r => r.summary?.audits?.['first-contentful-paint']?.numericValue || 0); const avg = results.reduce((a,b) => a + b, 0) / results.length; console.log(Math.round(avg)); } catch(e) { console.log('0'); } " "$REPORT")
+            CLS=$(node -e "try { const data = require('./' + process.argv[1]); const results = data.map(r => r.summary?.audits?.['cumulative-layout-shift']?.numericValue || 0); const avg = results.reduce((a,b) => a + b, 0) / results.length; console.log(avg.toFixed(3)); } catch(e) { console.log('0.000'); } " "$REPORT")
+            FID=$(node -e "try { const data = require('./' + process.argv[1]); const results = data.map(r => r.summary?.audits?.['first-input-delay']?.numericValue || 0); const avg = results.reduce((a,b) => a + b, 0) / results.length; console.log(Math.round(avg)); } catch(e) { console.log('0'); } " "$REPORT")
+            TBT=$(node -e "try { const data = require('./' + process.argv[1]); const results = data.map(r => r.summary?.audits?.['total-blocking-time']?.numericValue || 0); const avg = results.reduce((a,b) => a + b, 0) / results.length; console.log(Math.round(avg)); } catch(e) { console.log('0'); } " "$REPORT")
+          fi
+
           cat > .performance-history/perf-$TIMESTAMP.json << PERFDATA_EOF
           {
             "timestamp": "$TIMESTAMP",
             "date": "$DATE",
             "service": "hanbin-baik-blog",
             "version": "1.0.0",
-            "metrics": {}
+            "metrics": {
+              "performanceScore": $PERF_SCORE,
+              "firstContentfulPaint": $FCP,
+              "largestContentfulPaint": $LCP,
+              "cumulativeLayoutShift": $CLS,
+              "firstInputDelay": $FID,
+              "totalBlockingTime": $TBT
+            }
           }
           PERFDATA_EOF
-          
-          echo "Extracting performance metrics..."
-          
-          if [ -d ".lighthouseci" ]; then
-            for report in .lighthouseci/manifest.json; do
-              if [ -f "$report" ]; then
-                echo "Processing $report..."
-                
-                PERF_SCORE=$(node -e "try { const data = require('./' + process.argv[1]); const results = data.map(r => r.summary?.categories?.performance); const avg = results.reduce((a,b) => a + (b||0), 0) / results.length; console.log(Math.round(avg * 100)); } catch(e) { console.log('0'); } " "$report")
-                LCP=$(node -e "try { const data = require('./' + process.argv[1]); const results = data.map(r => r.summary?.audits?.['largest-contentful-paint']?.numericValue || 0); const avg = results.reduce((a,b) => a + b, 0) / results.length; console.log(Math.round(avg)); } catch(e) { console.log('0'); } " "$report")
-                FCP=$(node -e "try { const data = require('./' + process.argv[1]); const results = data.map(r => r.summary?.audits?.['first-contentful-paint']?.numericValue || 0); const avg = results.reduce((a,b) => a + b, 0) / results.length; console.log(Math.round(avg)); } catch(e) { console.log('0'); } " "$report")
-                CLS=$(node -e "try { const data = require('./' + process.argv[1]); const results = data.map(r => r.summary?.audits?.['cumulative-layout-shift']?.numericValue || 0); const avg = results.reduce((a,b) => a + b, 0) / results.length; console.log(avg.toFixed(3)); } catch(e) { console.log('0.000'); } " "$report")
-                FID=$(node -e "try { const data = require('./' + process.argv[1]); const results = data.map(r => r.summary?.audits?.['first-input-delay']?.numericValue || 0); const avg = results.reduce((a,b) => a + b, 0) / results.length; console.log(Math.round(avg)); } catch(e) { console.log('0'); } " "$report")
-                TBT=$(node -e "try { const data = require('./' + process.argv[1]); const results = data.map(r => r.summary?.audits?.['total-blocking-time']?.numericValue || 0); const avg = results.reduce((a,b) => a + b, 0) / results.length; console.log(Math.round(avg)); } catch(e) { console.log('0'); } " "$report")
-                
-                cat >> .performance-history/perf-$TIMESTAMP.json << METRICS_EOF
-              "metrics": {
-                "performanceScore": $PERF_SCORE,
-                "firstContentfulPaint": $FCP,
-                "largestContentfulPaint": $LCP,
-                "cumulativeLayoutShift": $CLS,
-                "firstInputDelay": $FID,
-                "totalBlockingTime": $TBT
-              }
-              METRICS_EOF
-              fi
-            done
-          fi
-          
-          echo "}" >> .performance-history/perf-$TIMESTAMP.json
+
           echo "Performance metrics collected"
           cat .performance-history/perf-$TIMESTAMP.json | head -20
       
@@ -325,7 +324,7 @@ jobs:
               title: 'chore: Update performance metrics',
               head: process.env.TEMP_BRANCH,
               base: 'dev-update',
-              body: 'Automated performance metrics update from workflow run ${{ github.runId }}'
+              body: 'Automated performance metrics update from workflow run ${{ github.run_id }}'
             });
             console.log(`✅ Created PR to dev-update #${pr.number}: ${pr.html_url}`);
             core.setOutput('pr_number', pr.number);
