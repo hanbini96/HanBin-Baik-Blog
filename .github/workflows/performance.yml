@@ -281,7 +281,7 @@ jobs:
                 "firstInputDelay": $FID,
                 "totalBlockingTime": $TBT
               }
-          METRICS_EOF
+              METRICS_EOF
               fi
             done
           fi
