@@ -80,9 +80,9 @@ jobs:
           echo "📊 Using PORT: $PORT (configured in workflow)"
           
           # Start server in background with explicit port
-          pnpm preview --port $PORT > /tmp/astro-server.log 2>&1 &
+          pnpm preview --port "$PORT" > /tmp/astro-server.log 2>&1 &
           SERVER_PID=$!
-          echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
+          echo "SERVER_PID=$SERVER_PID" >> "$GITHUB_ENV"
           
           # Wait for server to be ready (up to 30 seconds - should be fast)
           echo "⏳ Waiting for server to start on port $PORT..."
@@ -91,7 +91,7 @@ jobs:
           
           while true; do
             # Check if server is responding
-            if curl -s http://localhost:$PORT >/dev/null 2>&1; then
+            if curl -s "http://localhost:$PORT" >/dev/null 2>&1; then
               echo "✅ Server started successfully on port $PORT"
               break
             fi
@@ -189,7 +189,7 @@ jobs:
             pkill -f "astro preview --port $PORT" 2>/dev/null || true
             
             # Verify server is stopped
-            if curl -s http://localhost:$PORT >/dev/null 2>&1; then
+            if curl -s "http://localhost:$PORT" >/dev/null 2>&1; then
               echo "⚠️ Server may still be running, attempting force kill"
               pkill -9 -f "pnpm preview --port $PORT" 2>/dev/null || true
               pkill -9 -f "astro preview --port $PORT" 2>/dev/null || true
@@ -269,7 +269,7 @@ jobs:
             TBT=$(node -e "try { const data = require('./' + process.argv[1]); const results = data.map(r => r.summary?.audits?.['total-blocking-time']?.numericValue || 0); const avg = results.reduce((a,b) => a + b, 0) / results.length; console.log(Math.round(avg)); } catch(e) { console.log('0'); } " "$REPORT")
           fi
 
-          cat > .performance-history/perf-$TIMESTAMP.json << PERFDATA_EOF
+          cat > ".performance-history/perf-$TIMESTAMP.json" << PERFDATA_EOF
           {
             "timestamp": "$TIMESTAMP",
             "date": "$DATE",
@@ -287,7 +287,7 @@ jobs:
           PERFDATA_EOF
 
           echo "Performance metrics collected"
-          cat .performance-history/perf-$TIMESTAMP.json | head -20
+          head -20 ".performance-history/perf-$TIMESTAMP.json"
       
       - name: Commit performance metrics
         id: commit-metrics
@@ -304,11 +304,11 @@ jobs:
             git push origin "$TEMP_BRANCH"
             
             echo "✅ Performance metrics committed to temp branch: $TEMP_BRANCH"
-            echo "TEMP_BRANCH=$TEMP_BRANCH" >> $GITHUB_ENV
-            echo "HAS_CHANGES=true" >> $GITHUB_OUTPUT
+            echo "TEMP_BRANCH=$TEMP_BRANCH" >> "$GITHUB_ENV"
+            echo "HAS_CHANGES=true" >> "$GITHUB_OUTPUT"
           else
             echo "ℹ️ No changes in performance metrics"
-            echo "HAS_CHANGES=false" >> $GITHUB_OUTPUT
+            echo "HAS_CHANGES=false" >> "$GITHUB_OUTPUT"
           fi
         continue-on-error: true
 
@@ -382,7 +382,7 @@ jobs:
           echo "==============================="
           echo ""
           echo "📈 Recent Performance Metrics:"
-          ls -lt .performance-history/ | head -6 | awk '{print "  - " $9}'
+          find .performance-history -maxdepth 1 -type f -printf '%T@ %f\n' 2>/dev/null | sort -rn | head -6 | awk '{print "  - " $2}'
           echo ""
           echo "✅ Performance monitoring completed successfully"
 
