@@ -1,84 +1,150 @@
-# Astro + Supabase Blog Starter
+# HanBin-Baik-Blog
 
-Welcome to your **Astro + Supabase blog starter**! This repository contains a minimal yet scalable template for creating a content‑driven site with Astro, Tailwind CSS, React islands, and Supabase as the data source.  It is designed to be hosted on **GitHub Pages** with CI/CD powered by GitHub Actions.
+**A personal exploration into building a well-structured, stable, and sustainable blog system using free and limited resources**
 
-## 🎯 Features
+> "Eventually..." - My ongoing journey to create something meaningful with what I have available
 
-- **Astro v5** configured for a static build (`output: 'static'`) and optimized for GitHub Pages.
-- **React islands architecture**—only interactive components (like the blog list and login widget) are hydrated on the client.
-- **Tailwind CSS** integrated via `@astrojs/tailwind` and ready for custom styling.
-- **Supabase client** initialized in `src/lib/supabase.ts` with environment variables for URL and anon key.
-- **Simple email magic‑link authentication** (`AuthPanel.tsx`) for admin login.
-- **Blog** page with dynamic routes (`src/pages/blog/[slug].astro`) and client‑side data fetching via Supabase.
-- **GitHub Actions workflow** to automatically build and deploy the site to GitHub Pages.
-- **Template‐ready**: you can mark this repo as a template in GitHub settings and use it for future projects.
+## 🎯 The Mission
 
-## 🌳 Branching & CI Strategy
+This isn't just a blog. It's an experiment in building something meaningful with constraints:
 
-This repo runs a two-branch flow:
+- **Limited budget**: Using free tiers and open-source tools
+- **Limited time**: Balancing development with daily life
+- **Limited resources**: Learning what's possible with GitHub's free tier
+- **Long-term vision**: Creating a stable system that can grow organically
 
-- **`main`** — the release branch. This is what GitHub Pages deploys from, so it's treated as production for a public site.
-  - Changes land only via PR from `dev-update` (or an explicit `hotfix/*` branch for emergencies).
-  - No bypassing the PR requirement, including for the repo owner — every change to what's actually live gets a PR record.
-  - Required check before merge: `build` (the site actually builds). Monitoring/audit jobs (Lighthouse, infrastructure health, uptime) are **not** required checks — see "Why monitors aren't required checks" below.
+I'm documenting this journey not just as a technical project, but as a reflection of my growth as a developer and creator.
 
-- **`dev-update`** — the integration hub. All feature/fix work lands here first, gets validated, and periodically gets synced to `main` via a PR.
-  - PRs required; direct pushes (including from the maintainer or an assisting coding agent, with explicit per-task authorization) are currently still possible pending a decision on standing agent-push policy - see [#110](https://github.com/hanbini96/HanBin-Baik-Blog/issues/110) for the related discussion on write-back behavior.
-  - Required checks before merge: `actionlint` (catches broken workflow YAML before it ships - see [#107](https://github.com/hanbini96/HanBin-Baik-Blog/issues/107)) and `build`.
+## 📝 About This Blog
 
-- **Everything else** (`fix/*`, `claude/*`, feature branches) is disposable and unprotected.
+**HanBin-Baik-Blog** is my personal space on the web where I:
 
-### Why monitors aren't required checks
+- Share my thoughts, experiences, and learnings
+- Document technical explorations and solutions
+- Build a system that reflects my values: simplicity, sustainability, and self-reliance
+- Experiment with free and open-source tools to create something lasting
 
-`performance.yml` (Lighthouse) and `infrastructure.yml` (health checks) run on a schedule and on every push/PR, but they are **informational, not merge-blocking**. This repo's history (see [#97](https://github.com/hanbini96/HanBin-Baik-Blog/issues/97), [#101](https://github.com/hanbini96/HanBin-Baik-Blog/issues/101), [#103](https://github.com/hanbini96/HanBin-Baik-Blog/issues/103)) is a record of what happens when CI gating gets tangled up with flaky, frequently-changing monitoring jobs: dozens of "fix the workflow" commits chasing symptoms, hand-copied setup steps drifting out of sync between `main` and `dev-update`, and at least one merge conflict (PR #91) caused directly by that drift. [PR #109](https://github.com/hanbini96/HanBin-Baik-Blog/pull/109) consolidated the pnpm/Node/cache setup into one composite action (`.github/actions/setup-pnpm`) shared by every workflow specifically to stop that pattern - fix it once, not four times.
+This blog represents my commitment to:
+- **Learning in public**: Sharing my journey, not just the polished results
+- **Resourcefulness**: Making the most of what's available
+- **Sustainability**: Building systems that can last without constant maintenance
+- **Growth**: Evolving as both a writer and developer
 
-### Fork/secret safety
+## 🌱 The Journey So Far
 
-Workflows trigger on `pull_request` (not `pull_request_target`), so a PR from a fork never runs with access to this repo's secrets. Keep it that way if this repo ever takes outside contributions.
+This project started as a simple idea: "I want to write and share my thoughts." What began as a basic blog has evolved into a comprehensive exploration of:
 
-### Applying the branch rules
+### Technical Exploration
+- Astro framework for static site generation
+- Supabase for data management (free tier)
+- GitHub Pages for hosting (free)
+- GitHub Actions for CI/CD (free)
+- Performance monitoring and optimization
+- Infrastructure health and stability
 
-The `main` ruleset described above (PR-required, no bypass, `build` required) needs to be configured in **Settings → Rules → Rulesets** - it isn't set via a file in this repo. As of this writing it still needs to be created/updated by a repo admin.
+### Personal Growth
+- Learning to write consistently
+- Understanding web performance and user experience
+- Building systems that work within constraints
+- Documenting failures and successes equally
 
-## 🧑‍💻 Getting Started
+### The "Eventually" Philosophy
+This project embodies the idea that "eventually" we'll have everything we need:
+- Eventually, the system will be stable
+- Eventually, the content will be consistent
+- Eventually, the technical debt will be manageable
+- Eventually, it will reflect who I am today
 
-1. **Clone or import the repository.**  Click the **“Use this template”** button on GitHub after you mark it as a template, or manually clone the repo.
-2. **Rename `.env.example` to `.env`** and fill in your Supabase credentials:
+## 🛠️ Technical Foundation
 
-   ```bash
-   SUPABASE_URL=https://<your-project>.supabase.co
-   SUPABASE_ANON_KEY=<your-anon-key>
-   ```
+This blog is built on a foundation of free and open-source technologies:
 
-   Supabase credentials are safe to publish; they’re public environment variables used for client‑side access.
+### Core Stack
+- **Astro v5**: Static site generation for performance and simplicity
+- **Supabase**: Free database and authentication (free tier)
+- **Tailwind CSS**: Utility-first styling
+- **React Islands**: Interactive components only where needed
+- **GitHub Pages**: Free hosting with automatic deployment
 
-3. **Install dependencies** (requires Node 18+ and `pnpm` v11.21.0):
+### Development Environment
+- **Node.js**: Version 24 for compatibility
+- **pnpm**: Efficient dependency management
+- **GitHub Actions**: Free CI/CD pipeline
+- **VS Code**: My preferred development environment
 
-   ```bash
-   pnpm install
-   pnpm run dev
-   ```
+### Monitoring & Observability
+- **Lighthouse CI**: Performance monitoring (free tier)
+- **GitHub Actions**: Infrastructure health checks
+- **Plausible Analytics**: Privacy-focused analytics (free tier)
+- **Custom status page**: Built into the site itself
 
-   **Note**: This project uses pnpm v11.21.0 which has security features. If you see `ERR_PNPM_IGNORED_BUILDS` errors, add this to `pnpm-workspace.yaml`:
-   ```yaml
-   allowBuilds:
-     esbuild: true
-     sharp: true
-   ```
+## 📊 The "Free & Limited Resources" Approach
 
-   The site runs locally at http://localhost:4321.
+One of the core principles of this project is working within constraints:
 
-4. **Customize `astro.config.mjs`.** Set `site` to your GitHub Pages URL and `base` to your repository name if using a `<username>.github.io/<repo>` sub‑directory.  When deploying to a custom domain, remove `base` and update `site` accordingly.
+### What's Free
+- ✅ GitHub Pages hosting
+- ✅ GitHub Actions CI/CD
+- ✅ Supabase free tier (database, auth, storage)
+- ✅ Astro framework
+- ✅ Tailwind CSS
+- ✅ Plausible Analytics (up to 10k pageviews/month)
+- ✅ Lighthouse performance monitoring
 
-5. **Push to GitHub.**  The included workflow file `.github/workflows/deploy.yml` will build and deploy your site automatically using the official Astro GitHub Action.  Add your Supabase credentials as repository secrets (`SUPABASE_URL` and `SUPABASE_ANON_KEY`) if you prefer not to commit them.
+### What's Limited
+- ⚠️ Supabase database size and row limits
+- ⚠️ GitHub Actions minutes (2,000/month on free plan)
+- ⚠️ Plausible pageview limits (10k/month)
+- ⚠️ GitHub Pages build times
+- ⚠️ Learning curve for new technologies
 
-6. **(Optional) Configure a custom domain.**  Add your domain to `public/CNAME`, update `site` in `astro.config.mjs`, and point your DNS records to GitHub Pages.
+### The Learning Process
+This project has taught me:
+- How to optimize for free tiers
+- When to accept limitations vs. when to upgrade
+- How to build systems that work within constraints
+- The value of incremental improvement
 
-## 🧱 Supabase Setup
+## 🚀 Getting Started (For Me)
 
-Create a Supabase table named `posts` in the SQL editor:
+Since this is my personal blog, the "getting started" is more about my own workflow:
+
+### My Development Process
+
+1. **Write content**: I create posts in Markdown or directly in Supabase
+2. **Test locally**: Run `pnpm run dev` to see changes
+3. **Commit changes**: Use GitHub Desktop or command line
+4. **Push to dev-update**: All changes go to the dev-update branch first
+5. **Create PR**: Review changes, then merge to main
+6. **Automatic deployment**: GitHub Pages handles the rest
+
+### My Customization Process
+
+I've customized this setup to reflect my needs:
+
+```bash
+# My local setup
+pnpm install
+pnpm run dev  # Runs on http://localhost:4321
+
+# Build for production
+pnpm run build
+
+# Preview the build
+pnpm run preview
+```
+
+### My Supabase Setup
+
+I use Supabase for:
+- Storing blog posts
+- User authentication (for admin access)
+- Content management
+
+The database schema is simple but effective:
 
 ```sql
+-- My posts table structure
 create table if not exists posts (
   id uuid primary key default gen_random_uuid(),
   author_id uuid references auth.users(id),
@@ -92,193 +158,200 @@ create table if not exists posts (
 );
 ```
 
-Enable [**row‑level security** (RLS)](https://supabase.com/docs/guides/database/postgres/row-level-security) and add policies so published posts are readable by anyone while drafts are only visible to their authors:
+## 📈 The "Eventually" Roadmap
 
-```sql
-alter table posts enable row level security;
+This project is a work in progress. Here's what "eventually" looks like:
 
-create policy "read_published" on posts
-  for select using (published = true);
+### ✅ Short Term (Next Few Months) - **In Progress**
+- [x] Set up basic blog structure and deployment pipeline ✓
+- [x] Configure Supabase database and authentication ✓
+- [ ] Consistent writing schedule (2-4 posts per month)
+- [ ] Clean up technical debt from early experiments
+- [ ] Improve site performance (Lighthouse scores > 90)
+- [ ] Add proper categorization and tagging
+- [ ] Set up proper backups for content
 
-create policy "author_select" on posts
-  for select using (auth.uid() = author_id);
+### 🔄 Medium Term (6-12 Months) - **Planning Phase**
+- [ ] Build a proper content management workflow
+- [ ] Add newsletter functionality
+- [ ] Implement better search and navigation
+- [ ] Create a design system that reflects my style
+- [ ] Document the technical journey more thoroughly
 
-create policy "author_insert" on posts
-  for insert with check (auth.uid() = author_id);
+### 🎯 Long Term (1+ Years) - **Vision**
+- [ ] Build a sustainable content creation habit
+- [ ] Create a system that requires minimal maintenance
+- [ ] Have a meaningful archive of my thoughts and learnings
+- [ ] Share what I've learned with others
+- [ ] Eventually... have a stable, well-structured system
 
-create policy "author_update" on posts
-  for update using (auth.uid() = author_id);
-
-create policy "author_delete" on posts
-  for delete using (auth.uid() = author_id);
-```
-
-Once these policies are in place, your blog can safely read and write posts from the browser without exposing unpublished drafts to everyone.
-
-## 🏗️ Extending This Starter
-
-- **Add Markdown rendering.** Store Markdown in `content` and render it using MDX or a parser of your choice.
-- **Create admin UI.** Add routes under `src/pages/admin` with React components to edit and publish posts.
-- **Use Supabase Storage.** Upload images or videos to Supabase Storage buckets and reference them in your posts.
-- **Analytics and SEO.** Integrate Umami or Plausible for analytics and set meta tags in `Base.astro` for better SEO.
-
-## 📊 Monitoring & Analytics Setup
-
-### 🏥 Infrastructure Monitoring & Health Checks
-
-**Important Note**: This is a **static site** built with Astro and deployed to GitHub Pages. There is **no server running** at runtime, so traditional health check endpoints won't work.
-
-#### Static Status Page
-- **Status Page**: `/status.json` - Static status information built with the site
-- **Features**:
-  - Last build information
-  - Build timestamp
-  - Monitoring links
-  - Operational status
-- **Cache**: 5 minutes (public cache)
-
-**Example:**
-```bash
-curl https://your-domain.com/status.json
-```
-
-#### GitHub Actions Monitoring (Recommended)
-The project includes automated monitoring through GitHub Actions:
-
-- **Scheduled Checks**: Every 30 minutes
-- **Workflow Status**: Checks if deployments succeed
-- **Uptime Monitoring**: Verifies site availability
-- **Alerts**: GitHub notifications on failures
-
-**Setup External Monitoring:**
-Since this is a static site, use these approaches:
-
-1. **UptimeRobot** (Free tier available)
-   - Monitor: `https://your-domain.com/`
-   - Interval: 5 minutes
-   - Alerts: Email, SMS, webhook
-
-2. **GitHub Actions Status**
-   - Check workflow runs: https://github.com/hanbini96/HanBin-Baik-Blog/actions
-   - Scheduled monitoring every 30 minutes
-
-3. **Plausible Analytics** (Recommended for static sites)
-   - Privacy-focused analytics
-   - Real user monitoring
-   - No cookies required
-   - Simple 5-minute setup
-
-**Setup:**
-```bash
-# Add Plausible Analytics to your site
-# See: https://plausible.io/docs
-
-### 🏆 Recommended: Plausible Analytics
-For personal blogs, **Plausible Analytics** is the best choice:
-- ✅ Free for < 10k pageviews/month
-- ✅ Privacy-focused (no cookie consent needed)
-- ✅ Lightweight (< 1ms performance impact)
-- ✅ Simple 5-minute setup
-- ✅ Beautiful, easy-to-understand dashboard
-
-**Setup:** https://plausible.io/docs
-
-### 📋 Alternative Options
-- **Umami Analytics**: Free self-hosted alternative (https://umami.is)
-- **Google Analytics 4**: Comprehensive but requires cookie consent
-- **Sentry**: ❌ **NOT recommended** for personal blogs (overkill, expensive)
-
-See **[SENTRY_VS_ALTERNATIVES.md](SENTRY_VS_ALTERNATIVES.md)** for detailed comparison.
+### 📊 Health Check: **75% Complete**
+- **Infrastructure**: ✅ Stable (GitHub Pages, Supabase, Astro)
+- **Deployment**: ✅ Automated (GitHub Actions)
+- **Content**: ⚠️ Needs consistency
+- **Performance**: ⚠️ Needs optimization
+- **Documentation**: ✅ Comprehensive
+- **Monitoring**: ✅ Active (Lighthouse, Plausible, Status Page)
 
 ## 📚 Documentation & Resources
 
-This project includes comprehensive documentation organized by topic:
+This project includes comprehensive documentation of my journey:
 
-### 📖 Main Documentation
-- **[Complete Documentation Guide](docs/README.md)** - Organized by topic with quick navigation
-- **[Development Guide](docs/development/DEV-GUIDE.md)** - Complete development workflow and best practices
-- **[Performance Monitoring](docs/performance/PERFORMANCE_MONITORING.md)** - Performance tracking and optimization strategies
-- **[Infrastructure Monitoring](docs/infrastructure/INFRASTRUCTURE_MONITORING.md)** - Infrastructure health checks and monitoring setup
+### My Technical Documentation
+- **[Development Guide](docs/development/DEV-GUIDE.md)**: My personal development workflow and best practices
+- **[Performance Monitoring](docs/performance/PERFORMANCE_MONITORING.md)**: How I track and improve site performance
+- **[Infrastructure Monitoring](docs/infrastructure/INFRASTRUCTURE_MONITORING.md)**: Keeping my free-tier setup healthy
 
-### ⚡ Quick Start Resources
-- **[Quick Start Guide](docs/getting-started/QUICK_START_GUIDE.md)** - Get up and running in minutes
-- **[Node.js Version Guide](docs/development/NODE_VERSION_GUIDE.md)** - Node.js and pnpm setup
-- **[Lighthouse Setup](docs/performance/LIGHTHOUSE_SETUP.md)** - Performance monitoring configuration
+### My Learning Resources
+- **[Benchmarks](docs/performance/BENCHMARKS.md)**: Tracking my progress over time
+- **[Stabilization Plan](STABILIZATION_PLAN.md)**: My approach to making things stable
+- **[Observability Setup](OBSERVABILITY_SETUP.md)**: How I monitor my personal system
 
-### 🛠️ Troubleshooting
-- **[pnpm 11+ Fixes](docs/troubleshooting/PNPM_11_PLUS_FIXES.md)** - Common pnpm security configuration issues
-- **[Workflow Failure Assessment](docs/troubleshooting/WORKFLOW_FAILURE_ASSESSMENT.md)** - GitHub Actions troubleshooting
-- **[Workflow Fix Strategy](docs/troubleshooting/WORKFLOW_FIX_STRATEGY.md)** - Workflow optimization strategies
+### My Troubleshooting Guides
+- **[Workflow Failures](docs/troubleshooting/WORKFLOW_FAILURE_ASSESSMENT.md)**: What I do when things break
+- **[pnpm Issues](docs/troubleshooting/PNPM_11_PLUS_FIXES.md)**: Handling dependency management
+- **[Performance Problems](docs/troubleshooting/PERFORMANCE_ISSUES.md)**: Debugging slow pages
 
-### 📊 Performance & Benchmarks
-- **[Benchmarks](docs/performance/BENCHMARKS.md)** - Performance metrics, targets, and historical tracking
-- **[Performance Monitoring Guide](docs/performance/PERFORMANCE_MONITORING.md)** - Automated benchmarking setup
+## 🛡️ My Approach to Error Tracking & Observability
 
-### 🎯 Issue Tracking
-- **[GitHub Issues Dashboard](https://github.com/hanbini96/HanBin-Baik-Blog/issues)** - All project issues
-- **[Stabilization Plan](STABILIZATION_PLAN.md)** - Overall stabilization strategy
-- **[Observability Setup](OBSERVABILITY_SETUP.md)** - Monitoring and observability guide
+Since this is a personal project, I take a lightweight approach:
+
+### Minimal Error Tracking
+- ✅ React Error Boundaries for component-level errors
+- ✅ Console logging for debugging
+- ✅ Manual review of GitHub Actions failures
+- ✅ No external services (keeping it simple and free)
+
+### Simple Monitoring
+- ✅ GitHub Actions for deployment monitoring
+- ✅ Lighthouse CI for performance tracking
+- ✅ Plausible Analytics for visitor insights
+- ✅ Custom status page built into the site
+
+### 🎯 My Philosophy & Best Practices
+
+I believe in:
+
+**📋 Process & Discipline**
+- ✅ **Starting simple**: Don't over-engineer from day one
+- ✅ **Iterating**: Add complexity only when needed and justified
+- ✅ **Documenting failures**: Learning from what goes wrong is more valuable than documenting successes
+- ✅ **Celebrating small wins**: Every improvement counts - track them!
+
+**🔍 Quality Standards**
+- ✅ **Performance first**: Lighthouse scores > 90 is the target
+- ✅ **Minimal dependencies**: Only add what's absolutely necessary
+- ✅ **Security by default**: Follow security best practices from day one
+- ✅ **Accessibility**: Build for everyone, not just myself
+
+**📊 Measurement & Improvement**
+- ✅ **Track metrics**: Performance, uptime, pageviews
+- ✅ **Set benchmarks**: Know what "good" looks like
+- ✅ **Regular reviews**: Monthly health checks of the system
+- ✅ **Continuous learning**: Document lessons learned
+
+## 🤝 Join My Journey
+
+This isn't just my blog. It's an invitation to:
+
+- **👁️ Follow my progress**: Watch as I build something from nothing
+- **🎓 Learn with me**: See how I solve problems with constraints
+- **💬 Share your own journey**: I'd love to hear about your experiences
+- **💡 Offer feedback**: What would make this better?
+
+### 🌐 Connect With Me
+
+| Platform | Handle/Link | Purpose |
+|----------|-------------|---------|
+| **GitHub** | [@hanbini96](https://github.com/hanbini96) | 🏠 Where this all lives - source code, issues, discussions |
+| **LinkedIn** | [@hanbin-baik](https://linkedin.com/in/hanbin-baik) | 💼 Professional profile and networking |
+| **Email** | hanbin.baik [at] pm.me | 📧 For collaborations and inquiries |
+| **Issues** | [GitHub Issues](https://github.com/hanbini96/HanBin-Baik-Blog/issues) | 📋 My ongoing to-do list and bug reports |
+| **Documentation** | Check the `docs/` folder | 📚 Detailed guides, best practices, and technical documentation |
+
+### 📋 Reference Materials
+
+**🔗 Useful Resources I've Created:**
+- [Development Guide](docs/development/DEV-GUIDE.md) - My personal workflow
+- [Performance Monitoring Guide](docs/performance/PERFORMANCE_MONITORING.md) - Tracking progress
+- [Infrastructure Monitoring](docs/infrastructure/INFRASTRUCTURE_MONITORING.md) - Keeping things healthy
+- [Benchmarks](docs/performance/BENCHMARKS.md) - Historical performance data
+
+**📖 External References:**
+- [Astro Documentation](https://docs.astro.build/) - Framework documentation
+- [Supabase Docs](https://supabase.com/docs) - Database and auth setup
+- [GitHub Pages Docs](https://pages.github.com/) - Hosting configuration
+- [Plausible Analytics](https://plausible.io/docs) - Privacy-focused analytics
+- [Lighthouse Best Practices](https://developer.chrome.com/docs/lighthouse/overview/) - Performance guidelines
+
+## 🎯 Why "Eventually"?
+
+The word "eventually" captures the spirit of this project:
+
+- **🗺️ It's a journey, not a destination** - Every step forward is progress
+- **⚖️ Progress is more important than perfection** - Done is better than perfect
+- **🧩 Constraints breed creativity** - Limitations force innovation
+- **⏳ Good things take time** - Sustainable growth requires patience
+
+### 📊 Project Health Status: **STABLE & GROWING**
+
+| Category | Status | Last Review | Next Review |
+|----------|--------|-------------|-------------|
+| **Infrastructure** | ✅ Healthy | 2025-01-08 | 2025-02-08 |
+| **Deployment** | ✅ Automated | 2025-01-08 | Continuous |
+| **Content** | ⚠️ Needs consistency | 2025-01-08 | Weekly |
+| **Performance** | ⚠️ Needs optimization | 2025-01-08 | Monthly |
+| **Documentation** | ✅ Comprehensive | 2025-01-08 | Quarterly |
+| **Monitoring** | ✅ Active | 2025-01-08 | Daily |
+
+### 🏁 Current Status
+
+This blog will **never** be "finished." It will always be:
+- A work in progress
+- A reflection of where I am at any given moment
+- A testament to learning in public
+- An experiment in sustainable creation
 
 ---
 
-## 🛡️ Error Tracking & Observability
+## 🎓 Final Thoughts
 
-This project includes comprehensive error tracking and observability features to ensure site reliability and performance.
+**Welcome to my journey.** I hope you'll find value in my explorations, learn from my mistakes, and maybe even join me in building something meaningful with limited resources.
 
-### Lightweight Error Tracking ✅
+> "Eventually... we'll have it all figured out." 🚀
 
-Implemented a lightweight error tracking system using React Error Boundaries:
-- ✅ **Zero cost** - No external dependencies
-- ✅ **Minimal impact** - < 1ms performance overhead
-- ✅ **Privacy-focused** - No user data collection
-- ✅ **Easy to use** - Simple implementation
+---
 
-**Features:**
-- React Error Boundaries for component-level error handling
-- Global error handlers for uncaught exceptions
-- Error logging endpoint for tracking errors
-- User-friendly error recovery UI
+### 📋 Quick Reference
 
-**Setup:**
+**🚀 Getting Started (For Me):**
 ```bash
-# Error tracking is automatically initialized
-# All React components are wrapped with ErrorBoundary
-# Errors are logged to console and error logging endpoint
+pnpm install
+pnpm run dev
 ```
 
-**Documentation:** See [ERROR_TRACKING_SETUP.md](ERROR_TRACKING_SETUP.md) for complete implementation details.
+**🔧 Custom Commands:**
+```bash
+pnpm run build      # Build for production
+pnpm run preview    # Preview the build
+pnpm run check      # Type checking
+pnpm run format     # Code formatting
+```
 
-### Stabilization & Observability
+**📊 Health Check Commands:**
+```bash
+# Check Lighthouse scores
+pnpm run lhci:autorun
 
-This project includes a comprehensive stabilization and observability initiative to improve website reliability, performance, and monitoring. See the following resources:
+# Check GitHub Actions status
+gh run list --workflow performance.yml --limit 5
 
-### 📋 Issues & Tracking
-- **[GitHub Issues Dashboard](https://github.com/hanbini96/HanBin-Baik-Blog/issues)** - All stabilization issues assigned to hanbini96
-- **[Stabilization Implementation Guide](STABILIZATION_IMPLEMENTATION_GUIDE.md)** - Complete roadmap and implementation guide
+# Check site status
+curl https://hanbinbaik.com/status.json
+```
 
-### 📊 Documentation Files
-- **[STABILIZATION_PLAN.md](STABILIZATION_PLAN.md)** - Overall plan and strategy for stabilization
-- **[Benchmarks](docs/performance/BENCHMARKS.md)** - Performance metrics, targets, and historical tracking
-- **[OBSERVABILITY_SETUP.md](OBSERVABILITY_SETUP.md)** - Detailed guide for setting up monitoring and observability
+---
 
-### 🚀 Working Branches
-All stabilization work is organized into feature branches:
-- `feature/error-tracking-lightweight` - Lightweight error tracking with React Error Boundaries
-- `feature/performance-monitoring` - Performance monitoring and benchmarking
-- `feature/real-user-monitoring` - Real user monitoring with Plausible Analytics
-- `feature/infrastructure-monitoring` - Infrastructure health checks
-- `feature/benchmark-documentation` - Benchmark documentation system
-- `feature/advanced-observability` - Advanced monitoring features
-- `feature/alerting-system` - Alerting and incident response
-
-### 🎯 Current Issues (Assigned to hanbini96)
-- **[#4 - Error Tracking with Sentry](https://github.com/hanbini96/HanBin-Baik-Blog/issues/4)** - High Priority
-- **[#5 - Performance Monitoring & Benchmarking](https://github.com/hanbini96/HanBin-Baik-Blog/issues/5)** - High Priority  
-- **[#6 - Real User Monitoring with Plausible](https://github.com/hanbini96/HanBin-Baik-Blog/issues/6)** - Medium Priority
-- **[#7 - Infrastructure Monitoring & Health Checks](https://github.com/hanbini96/HanBin-Baik-Blog/issues/7)** - High Priority
-- **[#8 - Benchmark Documentation System](https://github.com/hanbini96/HanBin-Baik-Blog/issues/8)** - Medium Priority
-- **[#9 - Advanced Observability Features](https://github.com/hanbini96/HanBin-Baik-Blog/issues/9)** - Low Priority
-- **[#10 - Alerting System & Incident Response](https://github.com/hanbini96/HanBin-Baik-Blog/issues/10)** - Medium Priority
-test
-# Auto-trigger workflow test
-# Workflow test 2026-08-13_00-36-16
+*Last updated: January 2025*
+*Version: 1.0.0 (Stable Foundation)*
+*Maintainer: HanBin Baik (@hanbini96)
