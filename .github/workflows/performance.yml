@@ -80,9 +80,9 @@ jobs:
           echo "📊 Using PORT: $PORT (configured in workflow)"
           
           # Start server in background with explicit port
-          pnpm preview --port $PORT > /tmp/astro-server.log 2>&1 &
+          pnpm preview --port "$PORT" > /tmp/astro-server.log 2>&1 &
           SERVER_PID=$!
-          echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
+          echo "SERVER_PID=$SERVER_PID" >> "$GITHUB_ENV"
           
           # Wait for server to be ready (up to 30 seconds - should be fast)
           echo "⏳ Waiting for server to start on port $PORT..."
@@ -91,7 +91,7 @@ jobs:
           
           while true; do
             # Check if server is responding
-            if curl -s http://localhost:$PORT >/dev/null 2>&1; then
+            if curl -s "http://localhost:$PORT" >/dev/null 2>&1; then
               echo "✅ Server started successfully on port $PORT"
               break
             fi
@@ -189,7 +189,7 @@ jobs:
             pkill -f "astro preview --port $PORT" 2>/dev/null || true
             
             # Verify server is stopped
-            if curl -s http://localhost:$PORT >/dev/null 2>&1; then
+            if curl -s "http://localhost:$PORT" >/dev/null 2>&1; then
               echo "⚠️ Server may still be running, attempting force kill"
               pkill -9 -f "pnpm preview --port $PORT" 2>/dev/null || true
               pkill -9 -f "astro preview --port $PORT" 2>/dev/null || true
@@ -247,48 +247,47 @@ jobs:
           mkdir -p .performance-history
           TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
           DATE=$(date +%Y-%m-%d)
-          
-          cat > .performance-history/perf-$TIMESTAMP.json << PERFDATA_EOF
+
+          PERF_SCORE=0
+          FCP=0
+          LCP=0
+          CLS=0.000
+          FID=0
+          TBT=0
+
+          echo "Extracting performance metrics..."
+
+          REPORT=".lighthouseci/manifest.json"
+          if [ -f "$REPORT" ]; then
+            echo "Processing $REPORT..."
+
+            PERF_SCORE=$(node -e "try { const data = require('./' + process.argv[1]); const results = data.map(r => r.summary?.categories?.performance); const avg = results.reduce((a,b) => a + (b||0), 0) / results.length; console.log(Math.round(avg * 100)); } catch(e) { console.log('0'); } " "$REPORT")
+            LCP=$(node -e "try { const data = require('./' + process.argv[1]); const results = data.map(r => r.summary?.audits?.['largest-contentful-paint']?.numericValue || 0); const avg = results.reduce((a,b) => a + b, 0) / results.length; console.log(Math.round(avg)); } catch(e) { console.log('0'); } " "$REPORT")
+            FCP=$(node -e "try { const data = require('./' + process.argv[1]); const results = data.map(r => r.summary?.audits?.['first-contentful-paint']?.numericValue || 0); const avg = results.reduce((a,b) => a + b, 0) / results.length; console.log(Math.round(avg)); } catch(e) { console.log('0'); } " "$REPORT")
+            CLS=$(node -e "try { const data = require('./' + process.argv[1]); const results = data.map(r => r.summary?.audits?.['cumulative-layout-shift']?.numericValue || 0); const avg = results.reduce((a,b) => a + b, 0) / results.length; console.log(avg.toFixed(3)); } catch(e) { console.log('0.000'); } " "$REPORT")
+            FID=$(node -e "try { const data = require('./' + process.argv[1]); const results = data.map(r => r.summary?.audits?.['first-input-delay']?.numericValue || 0); const avg = results.reduce((a,b) => a + b, 0) / results.length; console.log(Math.round(avg)); } catch(e) { console.log('0'); } " "$REPORT")
+            TBT=$(node -e "try { const data = require('./' + process.argv[1]); const results = data.map(r => r.summary?.audits?.['total-blocking-time']?.numericValue || 0); const avg = results.reduce((a,b) => a + b, 0) / results.length; console.log(Math.round(avg)); } catch(e) { console.log('0'); } " "$REPORT")
+          fi
+
+          cat > ".performance-history/perf-$TIMESTAMP.json" << PERFDATA_EOF
           {
             "timestamp": "$TIMESTAMP",
             "date": "$DATE",
             "service": "hanbin-baik-blog",
             "version": "1.0.0",
-            "metrics": {}
+            "metrics": {
+              "performanceScore": $PERF_SCORE,
+              "firstContentfulPaint": $FCP,
+              "largestContentfulPaint": $LCP,
+              "cumulativeLayoutShift": $CLS,
+              "firstInputDelay": $FID,
+              "totalBlockingTime": $TBT
+            }
           }
           PERFDATA_EOF
-          
-          echo "Extracting performance metrics..."
-          
-          if [ -d ".lighthouseci" ]; then
-            for report in .lighthouseci/manifest.json; do
-              if [ -f "$report" ]; then
-                echo "Processing $report..."
-                
-                PERF_SCORE=$(node -e "try { const data = require('./' + process.argv[1]); const results = data.map(r => r.summary?.categories?.performance); const avg = results.reduce((a,b) => a + (b||0), 0) / results.length; console.log(Math.round(avg * 100)); } catch(e) { console.log('0'); } " "$report")
-                LCP=$(node -e "try { const data = require('./' + process.argv[1]); const results = data.map(r => r.summary?.audits?.['largest-contentful-paint']?.numericValue || 0); const avg = results.reduce((a,b) => a + b, 0) / results.length; console.log(Math.round(avg)); } catch(e) { console.log('0'); } " "$report")
-                FCP=$(node -e "try { const data = require('./' + process.argv[1]); const results = data.map(r => r.summary?.audits?.['first-contentful-paint']?.numericValue || 0); const avg = results.reduce((a,b) => a + b, 0) / results.length; console.log(Math.round(avg)); } catch(e) { console.log('0'); } " "$report")
-                CLS=$(node -e "try { const data = require('./' + process.argv[1]); const results = data.map(r => r.summary?.audits?.['cumulative-layout-shift']?.numericValue || 0); const avg = results.reduce((a,b) => a + b, 0) / results.length; console.log(avg.toFixed(3)); } catch(e) { console.log('0.000'); } " "$report")
-                FID=$(node -e "try { const data = require('./' + process.argv[1]); const results = data.map(r => r.summary?.audits?.['first-input-delay']?.numericValue || 0); const avg = results.reduce((a,b) => a + b, 0) / results.length; console.log(Math.round(avg)); } catch(e) { console.log('0'); } " "$report")
-                TBT=$(node -e "try { const data = require('./' + process.argv[1]); const results = data.map(r => r.summary?.audits?.['total-blocking-time']?.numericValue || 0); const avg = results.reduce((a,b) => a + b, 0) / results.length; console.log(Math.round(avg)); } catch(e) { console.log('0'); } " "$report")
-                
-                cat >> .performance-history/perf-$TIMESTAMP.json << METRICS_EOF
-              "metrics": {
-                "performanceScore": $PERF_SCORE,
-                "firstContentfulPaint": $FCP,
-                "largestContentfulPaint": $LCP,
-                "cumulativeLayoutShift": $CLS,
-                "firstInputDelay": $FID,
-                "totalBlockingTime": $TBT
-              }
-              METRICS_EOF
-              fi
-            done
-          fi
-          
-          echo "}" >> .performance-history/perf-$TIMESTAMP.json
+
           echo "Performance metrics collected"
-          cat .performance-history/perf-$TIMESTAMP.json | head -20
+          head -20 ".performance-history/perf-$TIMESTAMP.json"
       
       - name: Commit performance metrics
         id: commit-metrics
@@ -305,11 +304,11 @@ jobs:
             git push origin "$TEMP_BRANCH"
             
             echo "✅ Performance metrics committed to temp branch: $TEMP_BRANCH"
-            echo "TEMP_BRANCH=$TEMP_BRANCH" >> $GITHUB_ENV
-            echo "HAS_CHANGES=true" >> $GITHUB_OUTPUT
+            echo "TEMP_BRANCH=$TEMP_BRANCH" >> "$GITHUB_ENV"
+            echo "HAS_CHANGES=true" >> "$GITHUB_OUTPUT"
           else
             echo "ℹ️ No changes in performance metrics"
-            echo "HAS_CHANGES=false" >> $GITHUB_OUTPUT
+            echo "HAS_CHANGES=false" >> "$GITHUB_OUTPUT"
           fi
         continue-on-error: true
 
@@ -325,7 +324,7 @@ jobs:
               title: 'chore: Update performance metrics',
               head: process.env.TEMP_BRANCH,
               base: 'dev-update',
-              body: 'Automated performance metrics update from workflow run ${{ github.runId }}'
+              body: 'Automated performance metrics update from workflow run ${{ github.run_id }}'
             });
             console.log(`✅ Created PR to dev-update #${pr.number}: ${pr.html_url}`);
             core.setOutput('pr_number', pr.number);
@@ -383,7 +382,7 @@ jobs:
           echo "==============================="
           echo ""
           echo "📈 Recent Performance Metrics:"
-          ls -lt .performance-history/ | head -6 | awk '{print "  - " $9}'
+          find .performance-history -maxdepth 1 -type f -printf '%T@ %f\n' 2>/dev/null | sort -rn | head -6 | awk '{print "  - " $2}'
           echo ""
           echo "✅ Performance monitoring completed successfully"
 
