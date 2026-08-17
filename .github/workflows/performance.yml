@@ -20,7 +20,7 @@ env:
 
 permissions:
   contents: write
-  pull-requests: read
+  pull-requests: write
   issues: write
   pages: read
   checks: write
@@ -44,7 +44,7 @@ jobs:
         if: always()
         run: |
           echo "🔍 Environment Debug Information:"
-          echo "================================"
+          echo "==============================="
           echo ""
           echo "📊 Current working directory:"
           pwd
@@ -281,7 +281,7 @@ jobs:
                 "firstInputDelay": $FID,
                 "totalBlockingTime": $TBT
               }
-          METRICS_EOF
+              METRICS_EOF
               fi
             done
           fi
@@ -291,18 +291,81 @@ jobs:
           cat .performance-history/perf-$TIMESTAMP.json | head -20
       
       - name: Commit performance metrics
+        id: commit-metrics
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add .performance-history/
           
           if ! git diff --cached --quiet; then
+            # Create temp branch name with timestamp
+            TEMP_BRANCH="perf-metrics-$(date +%Y%m%d-%H%M%S)"
+            git checkout -b "$TEMP_BRANCH" main
             git commit -m "chore: Update performance metrics [skip ci]"
-            git push
-            echo "✅ Performance metrics committed and pushed"
+            git push origin "$TEMP_BRANCH"
+            
+            echo "✅ Performance metrics committed to temp branch: $TEMP_BRANCH"
+            echo "TEMP_BRANCH=$TEMP_BRANCH" >> $GITHUB_ENV
+            echo "HAS_CHANGES=true" >> $GITHUB_OUTPUT
           else
             echo "ℹ️ No changes in performance metrics"
+            echo "HAS_CHANGES=false" >> $GITHUB_OUTPUT
           fi
+        continue-on-error: true
+
+      - name: Create Pull Request to dev-update
+        if: steps.commit-metrics.outputs.HAS_CHANGES == 'true'
+        id: pr-dev-update
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'chore: Update performance metrics',
+              head: process.env.TEMP_BRANCH,
+              base: 'dev-update',
+              body: 'Automated performance metrics update from workflow run ${{ github.runId }}'
+            });
+            console.log(`✅ Created PR to dev-update #${pr.number}: ${pr.html_url}`);
+            core.setOutput('pr_number', pr.number);
+            core.setOutput('pr_url', pr.html_url);
+        continue-on-error: true
+
+      - name: Create Pull Request to main
+        if: steps.pr-dev-update.outcome == 'success'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'chore: Update performance metrics',
+              head: 'dev-update',
+              base: 'main',
+              body: 'Automated performance metrics update from dev-update to main'
+            });
+            console.log(`✅ Created PR to main #${pr.number}: ${pr.html_url}`);
+
+            # Auto-merge to main if possible
+            try {
+              await github.rest.pulls.merge({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+                merge_method: 'squash'
+              });
+              console.log(`✅ PR to main auto-merged`);
+            } catch (e) {
+              console.log('PR to main created, requires manual review');
+            }
+        continue-on-error: true
+
+      - name: Cleanup temp branch
+        if: always()
+        run: |
+          git push origin --delete "$TEMP_BRANCH" 2>/dev/null || true
+          echo "🧹 Cleaned up temp branch: $TEMP_BRANCH"
 
   performance-summary:
     name: Generate Performance Summary
@@ -399,12 +462,12 @@ jobs:
             const issueTitle = '[Performance] 🚨 Live Site Performance Regression Detected';
             const issueBody = `## Performance Regression Alert 🚨
 
-            **Site**: https://hanbini96.github.io/HanBin-Baik-Blog/
-            **Workflow**: https://github.com/hanbini96/HanBin-Baik-Blog/actions/runs/${{ github.run_id }}
-            **Detected**: ${{ github.event.repository.updated_at }}
+            *Site*: https://hanbini96.github.io/HanBin-Baik-Blog/
+            *Workflow*: https://github.com/hanbini96/HanBin-Baik-Blog/actions/runs/${{ github.run_id }}
+            *Detected*: ${{ github.event.repository.updated_at }}
 
             ### 📊 Audit Results:
-            - Status: **FAILED** ❌
+            - Status: *FAILED* ❌
             - The live site performance audit detected issues
 
             ### 🔍 Next Steps:
@@ -418,9 +481,9 @@ jobs:
 
             ---
 
-            **Automated by**: GitHub Actions - performance.yml
-            **Branch**: ${{ github.ref_name }}
-            **Commit**: ${{ github.sha }}`;
+            *Automated by*: GitHub Actions - performance.yml
+            *Branch*: ${{ github.ref_name }}
+            *Commit*: ${{ github.sha }}`;
             
             await github.rest.issues.create({
               owner: context.repo.owner,

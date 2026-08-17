@@ -229,9 +229,9 @@ jobs:
 
           ---
 
-          **Workflow**: infrastructure.yml
-          **Run ID**: ${{ github.run_id }}
-          **Repository**: hanbini96/HanBin-Baik-Blog"
+          *Workflow*: infrastructure.yml
+          *Run ID*: ${{ github.run_id }}
+          *Repository*: hanbini96/HanBin-Baik-Blog"
 
             gh issue create \
               --title "$ISSUE_TITLE" \
