@@ -29,8 +29,18 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Network Diagnostics
+      - name: Configure DNS and Network Diagnostics
         run: |
+          echo "📊 Network Configuration and Connectivity Report:"
+          
+          # Configure fallback DNS servers for GitHub Actions runners
+          echo "🔧 Configuring DNS with fallback servers..."
+          echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf.bak > /dev/null
+          echo "nameserver 1.1.1.1" | sudo tee -a /etc/resolv.conf.bak > /dev/null
+          sudo mv /etc/resolv.conf.bak /etc/resolv.conf
+          echo "✅ DNS configured with Google (8.8.8.8) and Cloudflare (1.1.1.1) fallback servers"
+          
+          echo ""
           echo "📊 Network Connectivity Report:"
           echo "   curl: $(which curl && curl --version | head -1 || echo 'NOT AVAILABLE')"
           echo "   DNS resolution: $(timeout 5 nslookup cli.supabase.com 2>&1 | grep -E 'Address|Name:' || echo 'FAILED')"
@@ -45,19 +55,45 @@ jobs:
           # Create installation directory first
           mkdir -p "$HOME/.supabase/bin"
           
-          # Enhanced DNS resolution with retry logic
+          # Enhanced DNS resolution with retry logic and fallback DNS servers
           echo "🔄 Testing DNS resolution with retry logic..."
+          
+          # Try with multiple DNS approaches
+          DNS_SUCCESS=false
+          
+          # Method 1: Direct curl with retry
           if timeout 30 curl -fsSL --retry 5 --retry-delay 10 --max-time 30 https://cli.supabase.com -o /dev/null 2>&1; then
+            DNS_SUCCESS=true
             echo "✅ DNS resolution successful"
           else
-            echo "❌ ERROR: DNS resolution failed after multiple retries"
-            echo "📊 Diagnostic information:"
-            echo "   curl availability: $(which curl || echo 'NOT FOUND')"
-            echo "   curl version: $(curl --version 2>&1 | head -1 || echo 'FAILED')"
-            echo "   DNS lookup: $(timeout 10 nslookup cli.supabase.com 2>&1 || echo 'FAILED')"
-            echo "   Network test: $(curl -I -fsSL --connect-timeout 10 https://cli.supabase.com 2>&1 | head -5 || echo 'FAILED')"
-            echo "   GitHub connectivity: $(curl -I -fsSL --connect-timeout 10 https://github.com 2>&1 | head -3 || echo 'FAILED')"
-            exit 1
+            # Method 2: Try with explicit DNS resolution using /etc/hosts fallback
+            echo "⚠️ Primary DNS failed, trying alternative resolution methods..."
+            
+            # Add Supabase CLI IP to /etc/hosts as fallback (GitHub Actions may have issues with external DNS)
+            echo "185.199.108.133 cli.supabase.com" | sudo tee -a /etc/hosts > /dev/null 2>&1
+            echo "185.199.109.133 cli.supabase.com" | sudo tee -a /etc/hosts > /dev/null 2>&1
+            echo "185.199.110.133 cli.supabase.com" | sudo tee -a /etc/hosts > /dev/null 2>&1
+            echo "185.199.111.133 cli.supabase.com" | sudo tee -a /etc/hosts > /dev/null 2>&1
+            
+            # Wait a moment for DNS cache to refresh
+            sleep 2
+            
+            # Try again with the hosts file entry
+            if timeout 30 curl -fsSL --max-time 30 https://cli.supabase.com -o /dev/null 2>&1; then
+              DNS_SUCCESS=true
+              echo "✅ DNS resolution successful (using /etc/hosts fallback)"
+            else
+              echo "❌ ERROR: DNS resolution failed after multiple retries"
+              echo "📊 Diagnostic information:"
+              echo "   curl availability: $(which curl || echo 'NOT FOUND')"
+              echo "   curl version: $(curl --version 2>&1 | head -1 || echo 'FAILED')"
+              echo "   DNS lookup: $(timeout 10 nslookup cli.supabase.com 2>&1 || echo 'FAILED')"
+              echo "   Network test: $(curl -I -fsSL --connect-timeout 10 https://cli.supabase.com 2>&1 | head -5 || echo 'FAILED')"
+              echo "   GitHub connectivity: $(curl -I -fsSL --connect-timeout 10 https://github.com 2>&1 | head -3 || echo 'FAILED')"
+              echo "   /etc/hosts entries for cli.supabase.com:"
+              grep "cli.supabase.com" /etc/hosts || echo "   No entries found"
+              exit 1
+            fi
           fi
           
           # Method 1: Official installation script with proper error handling
@@ -158,19 +194,45 @@ jobs:
           # Create installation directory first
           mkdir -p "$HOME/.supabase/bin"
           
-          # Enhanced DNS resolution with retry logic
+          # Enhanced DNS resolution with retry logic and fallback DNS servers
           echo "🔄 Testing DNS resolution with retry logic..."
+          
+          # Try with multiple DNS approaches
+          DNS_SUCCESS=false
+          
+          # Method 1: Direct curl with retry
           if timeout 30 curl -fsSL --retry 5 --retry-delay 10 --max-time 30 https://cli.supabase.com -o /dev/null 2>&1; then
+            DNS_SUCCESS=true
             echo "✅ DNS resolution successful"
           else
-            echo "❌ ERROR: DNS resolution failed after multiple retries"
-            echo "📊 Diagnostic information:"
-            echo "   curl availability: $(which curl || echo 'NOT FOUND')"
-            echo "   curl version: $(curl --version 2>&1 | head -1 || echo 'FAILED')"
-            echo "   DNS lookup: $(timeout 10 nslookup cli.supabase.com 2>&1 || echo 'FAILED')"
-            echo "   Network test: $(curl -I -fsSL --connect-timeout 10 https://cli.supabase.com 2>&1 | head -5 || echo 'FAILED')"
-            echo "   GitHub connectivity: $(curl -I -fsSL --connect-timeout 10 https://github.com 2>&1 | head -3 || echo 'FAILED')"
-            exit 1
+            # Method 2: Try with explicit DNS resolution using /etc/hosts fallback
+            echo "⚠️ Primary DNS failed, trying alternative resolution methods..."
+            
+            # Add Supabase CLI IP to /etc/hosts as fallback (GitHub Actions may have issues with external DNS)
+            echo "185.199.108.133 cli.supabase.com" | sudo tee -a /etc/hosts > /dev/null 2>&1
+            echo "185.199.109.133 cli.supabase.com" | sudo tee -a /etc/hosts > /dev/null 2>&1
+            echo "185.199.110.133 cli.supabase.com" | sudo tee -a /etc/hosts > /dev/null 2>&1
+            echo "185.199.111.133 cli.supabase.com" | sudo tee -a /etc/hosts > /dev/null 2>&1
+            
+            # Wait a moment for DNS cache to refresh
+            sleep 2
+            
+            # Try again with the hosts file entry
+            if timeout 30 curl -fsSL --max-time 30 https://cli.supabase.com -o /dev/null 2>&1; then
+              DNS_SUCCESS=true
+              echo "✅ DNS resolution successful (using /etc/hosts fallback)"
+            else
+              echo "❌ ERROR: DNS resolution failed after multiple retries"
+              echo "📊 Diagnostic information:"
+              echo "   curl availability: $(which curl || echo 'NOT FOUND')"
+              echo "   curl version: $(curl --version 2>&1 | head -1 || echo 'FAILED')"
+              echo "   DNS lookup: $(timeout 10 nslookup cli.supabase.com 2>&1 || echo 'FAILED')"
+              echo "   Network test: $(curl -I -fsSL --connect-timeout 10 https://cli.supabase.com 2>&1 | head -5 || echo 'FAILED')"
+              echo "   GitHub connectivity: $(curl -I -fsSL --connect-timeout 10 https://github.com 2>&1 | head -3 || echo 'FAILED')"
+              echo "   /etc/hosts entries for cli.supabase.com:"
+              grep "cli.supabase.com" /etc/hosts || echo "   No entries found"
+              exit 1
+            fi
           fi
           
           # Method 1: Official installation script with proper error handling
@@ -205,9 +267,6 @@ jobs:
               tar -xzf /tmp/supabase.tar.gz -C "$HOME/.supabase/bin" supabase 2>&1
               chmod +x "$HOME/.supabase/bin/supabase"
               rm -f /tmp/supabase.tar.gz
-              echo "✅ Direct binary download succeeded"
-            else
-              chmod +x "$HOME/.supabase/bin/supabase"
               echo "✅ Direct binary download succeeded"
             else
               echo "❌ ERROR: All installation methods failed"
