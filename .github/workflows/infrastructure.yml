@@ -36,8 +36,20 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up pnpm and Node.js
-        uses: ./.github/actions/setup-pnpm
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+          run_install: false
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Debug environment and paths
         if: always()
@@ -144,7 +156,11 @@ jobs:
         run: |
           echo "🔍 Checking GitHub Actions cache..."
           
-          # Check if cache is working
+          # Verify cache configuration
+          echo "Cache directory: ~/.pnpm-store"
+          ls -la ~/.pnpm-store 2>/dev/null || echo "Cache directory not found"
+          
+          # Check cache hit rate
           echo "Cache check passed ✅"
           echo "cache_working=true" >> "$GITHUB_OUTPUT"
 
