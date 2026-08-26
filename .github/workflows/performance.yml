@@ -269,21 +269,21 @@ jobs:
             TBT=$(node -e "try { const data = require('./' + process.argv[1]); const results = data.map(r => r.summary?.audits?.['total-blocking-time']?.numericValue || 0); const avg = results.reduce((a,b) => a + b, 0) / results.length; console.log(Math.round(avg)); } catch(e) { console.log('0'); } " "$REPORT")
           fi
 
-          cat > ".performance-history/perf-$TIMESTAMP.json" << PERFDATA_EOF
-          {
-            "timestamp": "$TIMESTAMP",
-            "date": "$DATE",
-            "service": "hanbin-baik-blog",
-            "version": "1.0.0",
-            "metrics": {
-              "performanceScore": $PERF_SCORE,
-              "firstContentfulPaint": $FCP,
-              "largestContentfulPaint": $LCP,
-              "cumulativeLayoutShift": $CLS,
-              "firstInputDelay": $FID,
-              "totalBlockingTime": $TBT
+          cat > ".performance-history/perf-$TIMESTAMP.json" <<- PERFDATA_EOF
+            {
+              "timestamp": "$TIMESTAMP",
+              "date": "$DATE",
+              "service": "hanbin-baik-blog",
+              "version": "1.0.0",
+              "metrics": {
+                "performanceScore": $PERF_SCORE,
+                "firstContentfulPaint": $FCP,
+                "largestContentfulPaint": $LCP,
+                "cumulativeLayoutShift": $CLS,
+                "firstInputDelay": $FID,
+                "totalBlockingTime": $TBT
+              }
             }
-          }
           PERFDATA_EOF
 
           echo "Performance metrics collected"
