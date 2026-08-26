@@ -36,7 +36,8 @@ jobs:
           echo "   DNS resolution: $(timeout 5 nslookup cli.supabase.com 2>&1 | grep -E 'Address|Name:' || echo 'FAILED')"
           echo "   HTTP connectivity: $(curl -I -fsSL https://cli.supabase.com --max-time 10 2>&1 | head -3 || echo 'FAILED')"
           echo "   GitHub connectivity: $(curl -I -fsSL https://github.com --max-time 10 2>&1 | head -3 || echo 'FAILED')"
-
+          echo "   DNS retry test: $(timeout 15 curl -fsSL --retry 3 --retry-delay 5 --max-time 15 https://cli.supabase.com -o /dev/null 2>&1 && echo 'SUCCESS' || echo 'FAILED')"
+        
       - name: Install Supabase CLI
         run: |
           echo "🔧 Installing Supabase CLI with comprehensive error handling..."
@@ -44,9 +45,24 @@ jobs:
           # Create installation directory first
           mkdir -p "$HOME/.supabase/bin"
           
+          # Enhanced DNS resolution with retry logic
+          echo "🔄 Testing DNS resolution with retry logic..."
+          if timeout 30 curl -fsSL --retry 5 --retry-delay 10 --max-time 30 https://cli.supabase.com -o /dev/null 2>&1; then
+            echo "✅ DNS resolution successful"
+          else
+            echo "❌ ERROR: DNS resolution failed after multiple retries"
+            echo "📊 Diagnostic information:"
+            echo "   curl availability: $(which curl || echo 'NOT FOUND')"
+            echo "   curl version: $(curl --version 2>&1 | head -1 || echo 'FAILED')"
+            echo "   DNS lookup: $(timeout 10 nslookup cli.supabase.com 2>&1 || echo 'FAILED')"
+            echo "   Network test: $(curl -I -fsSL --connect-timeout 10 https://cli.supabase.com 2>&1 | head -5 || echo 'FAILED')"
+            echo "   GitHub connectivity: $(curl -I -fsSL --connect-timeout 10 https://github.com 2>&1 | head -3 || echo 'FAILED')"
+            exit 1
+          fi
+          
           # Method 1: Official installation script with proper error handling
           echo "🚀 Method 1: Official installation script"
-          if curl -fsSL https://cli.supabase.com/install/linux > /tmp/supabase_install.sh 2>&1 && bash /tmp/supabase_install.sh; then
+          if curl -fsSL --retry 3 --retry-delay 5 --max-time 60 https://cli.supabase.com/install/linux > /tmp/supabase_install.sh 2>&1 && bash /tmp/supabase_install.sh; then
             echo "✅ Official installation succeeded"
             rm -f /tmp/supabase_install.sh
           else
