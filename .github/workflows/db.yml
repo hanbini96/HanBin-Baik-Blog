@@ -46,10 +46,12 @@ jobs:
           
           # Method 1: Official installation script with proper error handling
           echo "🚀 Method 1: Official installation script"
-          if curl -fsSL https://cli.supabase.com/install/linux | sh; then
+          if curl -fsSL https://cli.supabase.com/install/linux > /tmp/supabase_install.sh 2>&1 && bash /tmp/supabase_install.sh; then
             echo "✅ Official installation succeeded"
+            rm -f /tmp/supabase_install.sh
           else
             echo "❌ Official installation failed, trying direct download..."
+            rm -f /tmp/supabase_install.sh
             
             # Method 2: Direct binary download with fallback
             echo "🔄 Method 2: Direct binary download"
@@ -142,10 +144,12 @@ jobs:
           
           # Method 1: Official installation script with proper error handling
           echo "🚀 Method 1: Official installation script"
-          if curl -fsSL https://cli.supabase.com/install/linux | sh; then
+          if curl -fsSL https://cli.supabase.com/install/linux > /tmp/supabase_install.sh 2>&1 && bash /tmp/supabase_install.sh; then
             echo "✅ Official installation succeeded"
+            rm -f /tmp/supabase_install.sh
           else
             echo "❌ Official installation failed, trying direct download..."
+            rm -f /tmp/supabase_install.sh
             
             # Method 2: Direct binary download with fallback
             echo "🔄 Method 2: Direct binary download"
