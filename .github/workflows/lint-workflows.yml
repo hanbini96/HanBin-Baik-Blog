@@ -45,3 +45,5 @@ jobs:
         with:
           reporter: github-check
           fail_level: error
+          filter_mode: nofilter
+          level: warning
