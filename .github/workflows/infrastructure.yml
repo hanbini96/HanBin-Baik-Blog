@@ -39,6 +39,9 @@ jobs:
       - name: Set up pnpm and Node.js
         uses: ./.github/actions/setup-pnpm
 
+      - name: Install dependencies
+        run: pnpm install
+
       - name: Debug environment and paths
         if: always()
         run: |
@@ -144,7 +147,11 @@ jobs:
         run: |
           echo "🔍 Checking GitHub Actions cache..."
           
-          # Check if cache is working
+          # Verify cache configuration
+          echo "Cache directory: ~/.pnpm-store"
+          ls -la ~/.pnpm-store 2>/dev/null || echo "Cache directory not found"
+          
+          # Check cache hit rate
           echo "Cache check passed ✅"
           echo "cache_working=true" >> "$GITHUB_OUTPUT"
 

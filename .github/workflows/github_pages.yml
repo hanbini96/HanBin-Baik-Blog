@@ -31,6 +31,9 @@ jobs:
       - name: Set up pnpm and Node.js
         uses: ./.github/actions/setup-pnpm
 
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Update browser compatibility data
         run: |
           echo "Updating browser compatibility data..."

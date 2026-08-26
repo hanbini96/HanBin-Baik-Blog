@@ -24,6 +24,12 @@ jobs:
       - name: 🔐 Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up pnpm and Node.js
+        uses: ./.github/actions/setup-pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
       - name: 🎯 Add Issue to Project
         if: github.event_name == 'issues' && github.event.action == 'opened'
         uses: actions/github-script@v7
@@ -177,6 +183,12 @@ jobs:
       - name: 🔐 Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up pnpm and Node.js
+        uses: ./.github/actions/setup-pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
       - name: 🧹 Archive Old Completed Items
         uses: actions/github-script@v7
         with:
@@ -221,6 +233,12 @@ jobs:
     steps:
       - name: 🔐 Checkout repository
         uses: actions/checkout@v4
+
+      - name: Set up pnpm and Node.js
+        uses: ./.github/actions/setup-pnpm
+
+      - name: Install dependencies
+        run: pnpm install
 
       - name: 📊 Generate Kanban Metrics
         uses: actions/github-script@v7
