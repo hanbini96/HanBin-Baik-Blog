@@ -29,44 +29,44 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Network Diagnostics
+        run: |
+          echo "📊 Network Connectivity Report:"
+          echo "   curl: $(which curl && curl --version | head -1 || echo 'NOT AVAILABLE')"
+          echo "   DNS resolution: $(timeout 5 nslookup cli.supabase.com 2>&1 | grep -E 'Address|Name:' || echo 'FAILED')"
+          echo "   HTTP connectivity: $(curl -I -fsSL https://cli.supabase.com --max-time 10 2>&1 | head -3 || echo 'FAILED')"
+          echo "   GitHub connectivity: $(curl -I -fsSL https://github.com --max-time 10 2>&1 | head -3 || echo 'FAILED')"
+
       - name: Install Supabase CLI
         run: |
           echo "🔧 Installing Supabase CLI with comprehensive error handling..."
           
-          # Diagnostic: Check curl availability
-          echo "📊 Diagnostic: Checking curl availability..."
-          which curl || echo "⚠️ curl not found in PATH"
-          curl --version || echo "⚠️ curl command failed"
+          # Create installation directory first
+          mkdir -p "$HOME/.supabase/bin"
           
-          # Diagnostic: Check network connectivity
-          echo "📊 Diagnostic: Testing network connectivity to Supabase..."
-          timeout 10 bash -c 'curl -I -fsSL https://cli.supabase.com 2>&1 | head -5' || echo "⚠️ Network test failed"
-          
-          # Try multiple installation methods
-          echo "🚀 Attempting Supabase CLI installation..."
-          
-          # Method 1: Using the official installation script with retries
-          if timeout 90 bash -c '
-            until curl -fsSL https://cli.supabase.com/install/linux | sh; do
-              echo "⚠️ Installation failed, retrying in 15s..."
-              sleep 15
-            done
-          '; then
-            echo "✅ Installation script succeeded"
+          # Method 1: Official installation script with proper error handling
+          echo "🚀 Method 1: Official installation script"
+          if curl -fsSL https://cli.supabase.com/install/linux | sh; then
+            echo "✅ Official installation succeeded"
           else
-            echo "❌ Installation script failed, trying alternative method..."
+            echo "❌ Official installation failed, trying direct download..."
             
-            # Method 2: Direct download and manual installation
-            echo "🔄 Trying direct binary download..."
-            mkdir -p "$HOME/.supabase/bin"
+            # Method 2: Direct binary download with fallback
+            echo "🔄 Method 2: Direct binary download"
+            local_arch="$(uname -s)_$(uname -m)"
+            binary_url="https://github.com/supabase/cli/releases/latest/download/supabase_${local_arch}"
             
-            if curl -fsSL -o "$HOME/.supabase/bin/supabase" "https://github.com/supabase/cli/releases/latest/download/supabase_$(uname -s)_$(uname -m)"; then
+            if curl -fsSL -o "$HOME/.supabase/bin/supabase" "$binary_url"; then
               chmod +x "$HOME/.supabase/bin/supabase"
               echo "✅ Direct binary download succeeded"
             else
-              echo "❌ Direct binary download failed"
-              echo "❌ ERROR: Failed to install Supabase CLI using all methods"
-              echo "Available binaries: https://github.com/supabase/cli/releases"
+              echo "❌ ERROR: All installation methods failed"
+              echo "📊 Diagnostic information:"
+              echo "   curl availability: $(which curl || echo 'NOT FOUND')"
+              echo "   curl version: $(curl --version 2>&1 | head -1 || echo 'FAILED')"
+              echo "   Network test: $(curl -I -fsSL https://cli.supabase.com 2>&1 | head -3 || echo 'FAILED')"
+              echo "   Installation directory: $(ls -la "$HOME/.supabase/bin" 2>&1 || echo 'NOT CREATED')"
+              echo "   Available binaries: https://github.com/supabase/cli/releases"
               exit 1
             fi
           fi
@@ -77,11 +77,11 @@ jobs:
           export PATH="$HOME/.supabase/bin:$PATH"
           
           if command -v supabase >/dev/null 2>&1; then
-            echo "✅ Supabase CLI installed and available: $(supabase --version 2>&1 || echo 'version check')"
+            echo "✅ Supabase CLI installed: $(supabase --version 2>&1)"
           else
-            echo "❌ ERROR: supabase command not found after installation"
-            echo "🔍 Debugging steps:"
-            ls -la "$HOME/.supabase/bin" || true
+            echo "❌ ERROR: Installation verification failed"
+            echo "Available binaries:"
+            find "$HOME/.supabase" -type f 2>/dev/null || echo "No files found"
             exit 1
           fi
 
@@ -125,43 +125,44 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Network Diagnostics
+        run: |
+          echo "📊 Network Connectivity Report:"
+          echo "   curl: $(which curl && curl --version | head -1 || echo 'NOT AVAILABLE')"
+          echo "   DNS resolution: $(timeout 5 nslookup cli.supabase.com 2>&1 | grep -E 'Address|Name:' || echo 'FAILED')"
+          echo "   HTTP connectivity: $(curl -I -fsSL https://cli.supabase.com --max-time 10 2>&1 | head -3 || echo 'FAILED')"
+          echo "   GitHub connectivity: $(curl -I -fsSL https://github.com --max-time 10 2>&1 | head -3 || echo 'FAILED')"
+
       - name: Install Supabase CLI
         run: |
           echo "🔧 Installing Supabase CLI with comprehensive error handling..."
           
-          # Diagnostic: Check curl availability
-          echo "📊 Diagnostic: Checking curl availability..."
-          which curl || echo "⚠️ curl not found in PATH"
-          curl --version || echo "⚠️ curl command failed"
+          # Create installation directory first
+          mkdir -p "$HOME/.supabase/bin"
           
-          # Diagnostic: Check network connectivity
-          echo "📊 Diagnostic: Testing network connectivity to Supabase..."
-          timeout 10 bash -c 'curl -I -fsSL https://cli.supabase.com 2>&1 | head -5' || echo "⚠️ Network test failed"
-          
-          # Try multiple installation methods
-          echo "🚀 Attempting Supabase CLI installation..."
-          
-          # Method 1: Using the official installation script with retries
-          if timeout 90 bash -c '
-            until curl -fsSL https://cli.supabase.com/install/linux | sh; do
-              echo "⚠️ Installation failed, retrying in 15s..."
-              sleep 15
-            done
-          '; then
-            echo "✅ Installation script succeeded"
+          # Method 1: Official installation script with proper error handling
+          echo "🚀 Method 1: Official installation script"
+          if curl -fsSL https://cli.supabase.com/install/linux | sh; then
+            echo "✅ Official installation succeeded"
           else
-            echo "❌ Installation script failed, trying alternative method..."
+            echo "❌ Official installation failed, trying direct download..."
             
-            # Method 2: Direct download and manual installation
-            echo "🔄 Trying direct binary download..."
-            mkdir -p "$HOME/.supabase/bin"
+            # Method 2: Direct binary download with fallback
+            echo "🔄 Method 2: Direct binary download"
+            local_arch="$(uname -s)_$(uname -m)"
+            binary_url="https://github.com/supabase/cli/releases/latest/download/supabase_${local_arch}"
             
-            if curl -fsSL -o "$HOME/.supabase/bin/supabase" "https://github.com/supabase/cli/releases/latest/download/supabase_$(uname -s)_$(uname -m)"; then
+            if curl -fsSL -o "$HOME/.supabase/bin/supabase" "$binary_url"; then
               chmod +x "$HOME/.supabase/bin/supabase"
               echo "✅ Direct binary download succeeded"
             else
-              echo "❌ Direct binary download failed"
-              echo "❌ ERROR: Failed to install Supabase CLI using all methods"
+              echo "❌ ERROR: All installation methods failed"
+              echo "📊 Diagnostic information:"
+              echo "   curl availability: $(which curl || echo 'NOT FOUND')"
+              echo "   curl version: $(curl --version 2>&1 | head -1 || echo 'FAILED')"
+              echo "   Network test: $(curl -I -fsSL https://cli.supabase.com 2>&1 | head -3 || echo 'FAILED')"
+              echo "   Installation directory: $(ls -la "$HOME/.supabase/bin" 2>&1 || echo 'NOT CREATED')"
+              echo "   Available binaries: https://github.com/supabase/cli/releases"
               exit 1
             fi
           fi
@@ -172,11 +173,11 @@ jobs:
           export PATH="$HOME/.supabase/bin:$PATH"
           
           if command -v supabase >/dev/null 2>&1; then
-            echo "✅ Supabase CLI installed and available: $(supabase --version 2>&1 || echo 'version check')"
+            echo "✅ Supabase CLI installed: $(supabase --version 2>&1)"
           else
-            echo "❌ ERROR: supabase command not found after installation"
-            echo "🔍 Debugging steps:"
-            ls -la "$HOME/.supabase/bin" || true
+            echo "❌ ERROR: Installation verification failed"
+            echo "Available binaries:"
+            find "$HOME/.supabase" -type f 2>/dev/null || echo "No files found"
             exit 1
           fi
 
