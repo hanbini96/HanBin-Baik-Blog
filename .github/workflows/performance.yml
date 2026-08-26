@@ -40,6 +40,13 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=4096
 
+      - name: Install Chrome for headless audits
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+          export PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+          export PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome
+
       - name: Debug environment and paths
         if: always()
         run: |
@@ -297,14 +304,10 @@ jobs:
           git add .performance-history/
           
           if ! git diff --cached --quiet; then
-            # Create temp branch name with timestamp
-            TEMP_BRANCH="perf-metrics-$(date +%Y%m%d-%H%M%S)"
-            git checkout -b "$TEMP_BRANCH" main
             git commit -m "chore: Update performance metrics [skip ci]"
-            git push origin "$TEMP_BRANCH"
+            git push origin HEAD:${{ github.ref_name }}
             
-            echo "✅ Performance metrics committed to temp branch: $TEMP_BRANCH"
-            echo "TEMP_BRANCH=$TEMP_BRANCH" >> "$GITHUB_ENV"
+            echo "✅ Performance metrics committed to repository"
             echo "HAS_CHANGES=true" >> "$GITHUB_OUTPUT"
           else
             echo "ℹ️ No changes in performance metrics"
@@ -416,7 +419,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
 
       - name: Install Lighthouse CLI globally
         run: |
