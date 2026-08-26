@@ -8,6 +8,13 @@ on:
   schedule:
     - cron: '*/30 * * * *'  # Run every 30 minutes for health checks
 
+# Serialize deployments to the single-slot github-pages environment instead
+# of racing runs (push + pull_request fire on the same commit, plus a
+# 30-minute cron), which was producing startup_failure runs.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
 permissions:
   contents: read
   pages: write

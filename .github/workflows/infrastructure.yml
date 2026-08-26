@@ -11,6 +11,12 @@ on:
   repository_dispatch:
     types: [infrastructure-check, workflow-trigger]
 
+# push and pull_request both fire on every merge commit; cancel the older,
+# now-stale run instead of letting duplicates pile up against the 2-hour cron.
+concurrency:
+  group: infrastructure-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
   PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
@@ -195,7 +201,10 @@ jobs:
     name: Infrastructure Alerts
     needs: health-check
     runs-on: ubuntu-latest
-    if: failure()
+    # `failure()` alone is false when health-check is cancelled (e.g. by the
+    # concurrency group above cancelling a stale run), so a cancelled check
+    # was silently skipping this alert instead of ever firing.
+    if: always() && (needs.health-check.result == 'failure' || needs.health-check.result == 'cancelled')
     steps:
       - name: Infrastructure failure notification
         run: |
