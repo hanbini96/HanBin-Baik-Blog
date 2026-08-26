@@ -19,20 +19,124 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up pnpm and Node.js
+        uses: ./.github/actions/setup-pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Configure DNS and Network Diagnostics
+        run: |
+          echo "📊 Network Configuration and Connectivity Report:"
+          
+          # Configure fallback DNS servers for GitHub Actions runners
+          echo "🔧 Configuring DNS with fallback servers..."
+          echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf.bak > /dev/null
+          echo "nameserver 1.1.1.1" | sudo tee -a /etc/resolv.conf.bak > /dev/null
+          sudo mv /etc/resolv.conf.bak /etc/resolv.conf
+          echo "✅ DNS configured with Google (8.8.8.8) and Cloudflare (1.1.1.1) fallback servers"
+          
+          echo ""
+          echo "📊 Network Connectivity Report:"
+          echo "   curl: $(which curl && curl --version | head -1 || echo 'NOT AVAILABLE')"
+          echo "   GitHub connectivity: $(curl -I -fsSL https://github.com --max-time 10 2>&1 | head -3 || echo 'FAILED')"
+        
       - name: Install Supabase CLI
         run: |
-          # Retry with timeout for DNS resolution issues
-          timeout 30 bash -c 'until curl -fsSL https://cli.supabase.com/install/linux | sh; do sleep 5; done' || \
-          curl -fsSL https://cli.supabase.com/install/linux | sh
+          echo "🔧 Installing Supabase CLI with comprehensive error handling..."
+          
+          # Create installation directory first
+          mkdir -p "$HOME/.supabase/bin"
+          
+          # Method 1: Use GitHub API URL directly to avoid DNS issues
+          echo "🚀 Method 1: Official installation script (GitHub API URL)"
+          if curl -fsSL --retry 3 --retry-delay 5 --max-time 60 https://github.com/supabase/cli/releases/download/v2.115.0/install > /tmp/supabase_install.sh 2>&1 && bash /tmp/supabase_install.sh; then
+            echo "✅ Official installation succeeded"
+            rm -f /tmp/supabase_install.sh
+          else
+            echo "❌ Official installation failed, trying direct binary download..."
+            rm -f /tmp/supabase_install.sh
+            
+            # Method 2: Direct binary download with correct architecture detection
+            echo "🔄 Method 2: Direct binary download with architecture detection"
+            
+            # Detect system architecture correctly
+            SYSTEM=$(uname -s | tr '[:upper:]' '[:lower:]')
+            MACHINE=$(uname -m)
+            
+            case "$MACHINE" in
+              x86_64) ARCH="amd64" ;;
+              aarch64) ARCH="arm64" ;;
+              arm64) ARCH="arm64" ;;
+              *) ARCH="amd64" ;;
+            esac
+            
+            binary_url="https://github.com/supabase/cli/releases/download/v2.115.0/supabase_${SYSTEM}_${ARCH}.tar.gz"
+            
+            echo "   Detected system: ${SYSTEM}, architecture: ${ARCH}"
+            echo "   Binary URL: $binary_url"
+            
+            if curl -fsSL --retry 3 --retry-delay 5 --max-time 60 -o "/tmp/supabase.tar.gz" "$binary_url"; then
+              tar -xzf /tmp/supabase.tar.gz -C "$HOME/.supabase/bin" supabase 2>&1
+              chmod +x "$HOME/.supabase/bin/supabase"
+              rm -f /tmp/supabase.tar.gz
+              echo "✅ Direct binary download succeeded"
+            else
+              echo "❌ ERROR: All installation methods failed"
+              echo "📊 Diagnostic information:"
+              echo "   curl availability: $(which curl || echo 'NOT FOUND')"
+              echo "   curl version: $(curl --version 2>&1 | head -1 || echo 'FAILED')"
+              echo "   GitHub connectivity: $(curl -I -fsSL --connect-timeout 10 https://github.com 2>&1 | head -3 || echo 'FAILED')"
+              echo "   Installation directory: $(ls -la "$HOME/.supabase/bin" 2>&1 || echo 'NOT CREATED')"
+              echo "   Available binaries: https://github.com/supabase/cli/releases/tag/v2.115.0"
+              exit 1
+            fi
+          fi
+          
+          # Verify installation
+          echo "🔍 Verifying Supabase CLI installation..."
           echo "$HOME/.supabase/bin" >> $GITHUB_PATH
+          export PATH="$HOME/.supabase/bin:$PATH"
+          
+          if command -v supabase >/dev/null 2>&1; then
+            echo "✅ Supabase CLI installed: $(supabase --version 2>&1)"
+          else
+            echo "❌ ERROR: Installation verification failed"
+            echo "Available binaries:"
+            find "$HOME/.supabase" -type f 2>/dev/null || echo "No files found"
+            exit 1
+          fi
+
+      - name: Link Supabase CLI to project
+        run: |
+          echo "🔗 Linking Supabase CLI to project..."
+          if supabase link --project-ref "$SUPABASE_PROJECT_REF" 2>&1; then
+            echo "✅ Successfully linked Supabase CLI to project"
+          else
+            echo "⚠️ Linking failed, trying with --debug flag..."
+            if supabase link --project-ref "$SUPABASE_PROJECT_REF" --debug 2>&1; then
+              echo "✅ Successfully linked Supabase CLI to project (with debug)"
+            else
+              echo "❌ ERROR: Failed to link Supabase CLI to project"
+              echo "📊 Diagnostic information:"
+              echo "   Supabase CLI version: $(supabase --version 2>&1 || echo 'NOT AVAILABLE')"
+              echo "   Project reference: $SUPABASE_PROJECT_REF"
+              echo "   Try running: supabase link --project-ref YOUR_PROJECT_REF"
+              exit 1
+            fi
+          fi
 
       - name: Push migrations to STAGING
         env:
           STAGING_DB_URL: ${{ secrets.STAGING_DB_URL }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
           if [ -z "$STAGING_DB_URL" ]; then
             echo "❌ ERROR: STAGING_DB_URL secret is missing"
@@ -40,8 +144,53 @@ jobs:
             echo "Connection string format: postgresql://postgres:[password]@db.supabase.co:5432/postgres?search_path=public&sslmode=require"
             exit 1
           fi
+          
           echo "✅ STAGING_DB_URL secret found, applying migrations..."
-          supabase db push --db-url "$STAGING_DB_URL"
+          echo "📋 Migration files to be applied:"
+          ls -la supabase/migrations/ || true
+          
+          echo ""
+          echo "🔍 Running comprehensive network diagnostics..."
+          echo "📊 GitHub Actions Runner IP:"
+          curl -s https://api.ipify.org || echo "IP detection failed"
+          echo "🔗 Testing GitHub connectivity:"
+          curl -I -fsSL --max-time 10 https://github.com 2>&1 | head -3 || echo "GitHub connectivity: FAILED"
+          echo "🌐 Testing Supabase API connectivity:"
+          curl -I -fsSL --max-time 10 https://api.supabase.com 2>&1 | head -3 || echo "Supabase API connectivity: FAILED"
+          
+          echo ""
+          echo "🚀 Applying migrations to STAGING database..."
+          echo "💡 Note: If this fails with connection errors, your GitHub Actions IP may be blocked by Supabase network restrictions"
+          echo "📄 Supabase Network Restrictions: https://supabase.com/dashboard/project/_/database/settings"
+          echo ""
+          
+          # Try to push migrations with detailed error handling
+          if supabase db push --db-url "$STAGING_DB_URL" --debug; then
+            echo "✅ Migrations applied successfully to STAGING"
+          else
+            echo ""
+            echo "❌ ERROR: Failed to apply migrations to STAGING"
+            echo ""
+            echo "🔧 Troubleshooting Steps:"
+            echo "1. Check if your GitHub Actions IP is blocked in Supabase network restrictions"
+            echo "2. Verify the STAGING_DB_URL secret is correct"
+            echo "3. Test the database connection manually:"
+            echo "   psql \"$STAGING_DB_URL\" -c \"SELECT version();\""
+            echo ""
+            echo "📊 Debug Information:"
+            echo "   Supabase CLI version: $(supabase --version 2>&1 || echo 'NOT AVAILABLE')"
+            echo "   Project reference: $SUPABASE_PROJECT_REF"
+            echo "   Database URL: ${STAGING_DB_URL:0:20}... (hidden for security)"
+            echo ""
+            echo "💡 Solutions:"
+            echo "   A) Add GitHub Actions IPs to Supabase network allowlist"
+            echo "   B) Use a VPN or proxy in the workflow"
+            echo "   C) Run migrations manually via Supabase Dashboard"
+            echo "   D) Contact Supabase support to whitelist your GitHub Actions IPs"
+            echo ""
+            echo "📄 Supabase Network Settings: https://supabase.com/dashboard/project/_/database/settings"
+            exit 1
+          fi
 
   deploy-prod:
     name: Apply migrations to PROD (manual)
@@ -50,16 +199,112 @@ jobs:
     environment: production   # requires manual approval in GitHub Environments
     permissions:
       contents: read
+    env:
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      PROD_DB_URL: ${{ secrets.PROD_DB_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up pnpm and Node.js
+        uses: ./.github/actions/setup-pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Network Diagnostics
+        run: |
+          echo "📊 Network Connectivity Report:"
+          echo "   curl: $(which curl && curl --version | head -1 || echo 'NOT AVAILABLE')"
+          echo "   GitHub connectivity: $(curl -I -fsSL https://github.com --max-time 10 2>&1 | head -3 || echo 'FAILED')"
+
       - name: Install Supabase CLI
         run: |
-          # Retry with timeout for DNS resolution issues
-          timeout 30 bash -c 'until curl -fsSL https://cli.supabase.com/install/linux | sh; do sleep 5; done' || \
-          curl -fsSL https://cli.supabase.com/install/linux | sh
+          echo "🔧 Installing Supabase CLI with comprehensive error handling..."
+          
+          # Create installation directory first
+          mkdir -p "$HOME/.supabase/bin"
+          
+          # Method 1: Use GitHub API URL directly to avoid DNS issues
+          echo "🚀 Method 1: Official installation script (GitHub API URL)"
+          if curl -fsSL --retry 3 --retry-delay 5 --max-time 60 https://github.com/supabase/cli/releases/download/v2.115.0/install > /tmp/supabase_install.sh 2>&1 && bash /tmp/supabase_install.sh; then
+            echo "✅ Official installation succeeded"
+            rm -f /tmp/supabase_install.sh
+          else
+            echo "❌ Official installation failed, trying direct binary download..."
+            rm -f /tmp/supabase_install.sh
+            
+            # Method 2: Direct binary download with correct architecture detection
+            echo "🔄 Method 2: Direct binary download with architecture detection"
+            
+            # Detect system architecture correctly
+            SYSTEM=$(uname -s | tr '[:upper:]' '[:lower:]')
+            MACHINE=$(uname -m)
+            
+            case "$MACHINE" in
+              x86_64) ARCH="amd64" ;;
+              aarch64) ARCH="arm64" ;;
+              arm64) ARCH="arm64" ;;
+              *) ARCH="amd64" ;;
+            esac
+            
+            binary_url="https://github.com/supabase/cli/releases/download/v2.115.0/supabase_${SYSTEM}_${ARCH}.tar.gz"
+            
+            echo "   Detected system: ${SYSTEM}, architecture: ${ARCH}"
+            echo "   Binary URL: $binary_url"
+            
+            if curl -fsSL --retry 3 --retry-delay 5 --max-time 60 -o "/tmp/supabase.tar.gz" "$binary_url"; then
+              tar -xzf /tmp/supabase.tar.gz -C "$HOME/.supabase/bin" supabase 2>&1
+              chmod +x "$HOME/.supabase/bin/supabase"
+              rm -f /tmp/supabase.tar.gz
+              echo "✅ Direct binary download succeeded"
+            else
+              echo "❌ ERROR: All installation methods failed"
+              echo "📊 Diagnostic information:"
+              echo "   curl availability: $(which curl || echo 'NOT FOUND')"
+              echo "   curl version: $(curl --version 2>&1 | head -1 || echo 'FAILED')"
+              echo "   GitHub connectivity: $(curl -I -fsSL --connect-timeout 10 https://github.com 2>&1 | head -3 || echo 'FAILED')"
+              echo "   Installation directory: $(ls -la "$HOME/.supabase/bin" 2>&1 || echo 'NOT CREATED')"
+              echo "   Available binaries: https://github.com/supabase/cli/releases/tag/v2.115.0"
+              exit 1
+            fi
+          fi
+          
+          # Verify installation
+          echo "🔍 Verifying Supabase CLI installation..."
           echo "$HOME/.supabase/bin" >> $GITHUB_PATH
+          export PATH="$HOME/.supabase/bin:$PATH"
+          
+          if command -v supabase >/dev/null 2>&1; then
+            echo "✅ Supabase CLI installed: $(supabase --version 2>&1)"
+          else
+            echo "❌ ERROR: Installation verification failed"
+            echo "Available binaries:"
+            find "$HOME/.supabase" -type f 2>/dev/null || echo "No files found"
+            exit 1
+          fi
+
+      - name: Link Supabase CLI to project
+        env:
+          PROD_DB_URL: ${{ secrets.PROD_DB_URL }}
+        run: |
+          echo "🔗 Linking Supabase CLI to project..."
+          if supabase link --project-ref "$SUPABASE_PROJECT_REF" 2>&1; then
+            echo "✅ Successfully linked Supabase CLI to project"
+          else
+            echo "⚠️ Linking failed, trying with --debug flag..."
+            if supabase link --project-ref "$SUPABASE_PROJECT_REF" --debug 2>&1; then
+              echo "✅ Successfully linked Supabase CLI to project (with debug)"
+            else
+              echo "❌ ERROR: Failed to link Supabase CLI to project"
+              echo "📊 Diagnostic information:"
+              echo "   Supabase CLI version: $(supabase --version 2>&1 || echo 'NOT AVAILABLE')"
+              echo "   Project reference: $SUPABASE_PROJECT_REF"
+              echo "   Try running: supabase link --project-ref YOUR_PROJECT_REF"
+              exit 1
+            fi
+          fi
 
       - name: Push migrations to PROD
         env:
@@ -70,5 +315,45 @@ jobs:
             echo "Please add the secret to GitHub"
             exit 1
           fi
+          
           echo "✅ PROD_DB_URL secret found, applying migrations..."
-          supabase db push --db-url "$PROD_DB_URL"
+          echo ""
+          echo "🔍 Running comprehensive network diagnostics..."
+          echo "📊 GitHub Actions Runner IP:"
+          curl -s https://api.ipify.org || echo "IP detection failed"
+          echo "🔗 Testing GitHub connectivity:"
+          curl -I -fsSL --max-time 10 https://github.com 2>&1 | head -3 || echo "GitHub connectivity: FAILED"
+          echo "🌐 Testing Supabase API connectivity:"
+          curl -I -fsSL --max-time 10 https://api.supabase.com 2>&1 | head -3 || echo "Supabase API connectivity: FAILED"
+          
+          echo ""
+          echo "🚀 Applying migrations to PRODUCTION database..."
+          echo "💡 Note: If this fails with connection errors, your GitHub Actions IP may be blocked by Supabase network restrictions"
+          echo "📄 Supabase Network Restrictions: https://supabase.com/dashboard/project/_/database/settings"
+          echo ""
+          
+          if supabase db push --db-url "$PROD_DB_URL" --debug; then
+            echo "✅ Migrations applied successfully to PRODUCTION"
+          else
+            echo ""
+            echo "❌ ERROR: Failed to apply migrations to PRODUCTION"
+            echo ""
+            echo "🔧 Troubleshooting Steps:"
+            echo "1. Check if your GitHub Actions IP is blocked in Supabase network restrictions"
+            echo "2. Verify the PROD_DB_URL secret is correct"
+            echo "3. Test the database connection manually:"
+            echo "   psql \"$PROD_DB_URL\" -c \"SELECT version();\""
+            echo ""
+            echo "📊 Debug Information:"
+            echo "   Supabase CLI version: $(supabase --version 2>&1 || echo 'NOT AVAILABLE')"
+            echo "   Project reference: $SUPABASE_PROJECT_REF"
+            echo ""
+            echo "💡 Solutions:"
+            echo "   A) Add GitHub Actions IPs to Supabase network allowlist"
+            echo "   B) Use a VPN or proxy in the workflow"
+            echo "   C) Run migrations manually via Supabase Dashboard"
+            echo "   D) Contact Supabase support to whitelist your GitHub Actions IPs"
+            echo ""
+            echo "📄 Supabase Network Settings: https://supabase.com/dashboard/project/_/database/settings"
+            exit 1
+          fi

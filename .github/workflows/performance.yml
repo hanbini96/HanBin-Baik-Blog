@@ -11,6 +11,12 @@ on:
   repository_dispatch:
     types: [workflow-trigger]
 
+# push and pull_request both fire on every merge commit; cancel the older,
+# now-stale run instead of piling up duplicates against the 2-hour cron.
+concurrency:
+  group: performance-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
   PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -39,6 +45,13 @@ jobs:
         uses: ./.github/actions/setup-pnpm
         env:
           NODE_OPTIONS: --max-old-space-size=4096
+
+      - name: Install Chrome for headless audits
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+          export PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+          export PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome
 
       - name: Debug environment and paths
         if: always()
@@ -269,21 +282,21 @@ jobs:
             TBT=$(node -e "try { const data = require('./' + process.argv[1]); const results = data.map(r => r.summary?.audits?.['total-blocking-time']?.numericValue || 0); const avg = results.reduce((a,b) => a + b, 0) / results.length; console.log(Math.round(avg)); } catch(e) { console.log('0'); } " "$REPORT")
           fi
 
-          cat > ".performance-history/perf-$TIMESTAMP.json" << PERFDATA_EOF
-          {
-            "timestamp": "$TIMESTAMP",
-            "date": "$DATE",
-            "service": "hanbin-baik-blog",
-            "version": "1.0.0",
-            "metrics": {
-              "performanceScore": $PERF_SCORE,
-              "firstContentfulPaint": $FCP,
-              "largestContentfulPaint": $LCP,
-              "cumulativeLayoutShift": $CLS,
-              "firstInputDelay": $FID,
-              "totalBlockingTime": $TBT
+          cat > ".performance-history/perf-$TIMESTAMP.json" <<- PERFDATA_EOF
+            {
+              "timestamp": "$TIMESTAMP",
+              "date": "$DATE",
+              "service": "hanbin-baik-blog",
+              "version": "1.0.0",
+              "metrics": {
+                "performanceScore": $PERF_SCORE,
+                "firstContentfulPaint": $FCP,
+                "largestContentfulPaint": $LCP,
+                "cumulativeLayoutShift": $CLS,
+                "firstInputDelay": $FID,
+                "totalBlockingTime": $TBT
+              }
             }
-          }
           PERFDATA_EOF
 
           echo "Performance metrics collected"
@@ -297,14 +310,10 @@ jobs:
           git add .performance-history/
           
           if ! git diff --cached --quiet; then
-            # Create temp branch name with timestamp
-            TEMP_BRANCH="perf-metrics-$(date +%Y%m%d-%H%M%S)"
-            git checkout -b "$TEMP_BRANCH" main
             git commit -m "chore: Update performance metrics [skip ci]"
-            git push origin "$TEMP_BRANCH"
+            git push origin HEAD:${{ github.ref_name }}
             
-            echo "✅ Performance metrics committed to temp branch: $TEMP_BRANCH"
-            echo "TEMP_BRANCH=$TEMP_BRANCH" >> "$GITHUB_ENV"
+            echo "✅ Performance metrics committed to repository"
             echo "HAS_CHANGES=true" >> "$GITHUB_OUTPUT"
           else
             echo "ℹ️ No changes in performance metrics"
@@ -402,116 +411,3 @@ jobs:
           echo ""
           echo "✅ Workflow completed successfully"
 
-  lighthouse-live:
-    name: 🌐 Lighthouse Live Site Audit
-    needs: lighthouse
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev-update' || startsWith(github.ref, 'refs/heads/fix/')
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Install Lighthouse CLI globally
-        run: |
-          echo "📦 Installing Lighthouse CLI..."
-          npm install -g lighthouse
-          lighthouse --version
-
-      - name: Run Lighthouse on Live GitHub Pages
-        id: lighthouse-live
-        run: |
-          echo "🔍 Auditing live site: https://hanbini96.github.io/HanBin-Baik-Blog/"
-          echo "📊 Testing URLs:"
-          echo "  - https://hanbini96.github.io/HanBin-Baik-Blog/"
-          echo "  - https://hanbini96.github.io/HanBin-Baik-Blog/blog"
-          echo "  - https://hanbini96.github.io/HanBin-Baik-Blog/about"
-          
-          # Run Lighthouse audit
-          lighthouse https://hanbini96.github.io/HanBin-Baik-Blog/ \
-            https://hanbini96.github.io/HanBin-Baik-Blog/blog \
-            https://hanbini96.github.io/HanBin-Baik-Blog/about \
-            --output=html --output-path=./lighthouse-report-live.html \
-            --chrome-flags="--no-sandbox --headless --disable-gpu" \
-            --only-categories=performance,accessibility,best-practices,seo \
-            --throttling.cpuSlowdown=2
-        env:
-          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
-
-      - name: Upload Live Site Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: lighthouse-live-report-${{ github.sha }}
-          path: |
-            lighthouse-report-live.html
-            lighthouse-report-live.json
-          retention-days: 30
-
-      - name: Create GitHub Issue on Regression (if audit fails)
-        if: failure() && steps.lighthouse-live.outcome == 'failure'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const issueTitle = '[Performance] 🚨 Live Site Performance Regression Detected';
-            const issueBody = `## Performance Regression Alert 🚨
-
-            *Site*: https://hanbini96.github.io/HanBin-Baik-Blog/
-            *Workflow*: https://github.com/hanbini96/HanBin-Baik-Blog/actions/runs/${{ github.run_id }}
-            *Detected*: ${{ github.event.repository.updated_at }}
-
-            ### 📊 Audit Results:
-            - Status: *FAILED* ❌
-            - The live site performance audit detected issues
-
-            ### 🔍 Next Steps:
-            1. 📥 Download the Lighthouse report artifact below
-            2. 🔍 Review performance metrics and recommendations
-            3. 🛠️ Investigate recent changes that may have caused regression
-            4. 🎯 Create fix branch and address the performance issues
-
-            ### 📁 Artifacts:
-            - [Download Lighthouse Report](https://github.com/hanbini96/HanBin-Baik-Blog/actions/runs/${{ github.run_id }}#artifacts)
-
-            ---
-
-            *Automated by*: GitHub Actions - performance.yml
-            *Branch*: ${{ github.ref_name }}
-            *Commit*: ${{ github.sha }}`;
-            
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: issueTitle,
-              body: issueBody,
-              labels: ['performance', 'regression', 'automated', 'critical']
-            });
-
-      - name: Performance Summary
-        if: success()
-        run: |
-          echo "🎉 Live Site Performance Audit PASSED! ✅"
-          echo ""
-          echo "📊 Audit completed successfully"
-          echo "🌐 Site tested: https://hanbini96.github.io/HanBin-Baik-Blog/"
-          echo "📁 Report saved: lighthouse-report-live.html"
-          echo ""
-          echo "🎯 Next Steps:"
-          echo "1. Review the uploaded report artifact"
-          echo "2. Track performance trends over time"
-          echo "3. Set up monitoring for future regressions"
-          
-          # Extract basic metrics from JSON report
-          if [ -f lighthouse-report-live.json ]; then
-            echo ""
-            echo "📈 Key Metrics:"
-            echo "Performance Score: $(jq -r '.categories.performance.score * 100 | floor' lighthouse-report-live.json) %"
-            echo "Accessibility Score: $(jq -r '.categories.accessibility.score * 100 | floor' lighthouse-report-live.json) %"
-            echo "Best Practices Score: $(jq -r '.categories["best-practices"].score * 100 | floor' lighthouse-report-live.json) %"
-            echo "SEO Score: $(jq -r '.categories.seo.score * 100 | floor' lighthouse-report-live.json) %"
-          fi
