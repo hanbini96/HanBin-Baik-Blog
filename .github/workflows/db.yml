@@ -19,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -111,6 +113,26 @@ jobs:
             exit 1
           fi
 
+      - name: Link Supabase CLI to project
+        run: |
+          echo "🔗 Linking Supabase CLI to project..."
+          if supabase link --project-ref "$SUPABASE_PROJECT_REF" --db-url "$STAGING_DB_URL" 2>&1; then
+            echo "✅ Successfully linked Supabase CLI to project"
+          else
+            echo "⚠️ Linking failed, trying with --debug flag..."
+            if supabase link --project-ref "$SUPABASE_PROJECT_REF" --db-url "$STAGING_DB_URL" --debug 2>&1; then
+              echo "✅ Successfully linked Supabase CLI to project (with debug)"
+            else
+              echo "❌ ERROR: Failed to link Supabase CLI to project"
+              echo "📊 Diagnostic information:"
+              echo "   Supabase CLI version: $(supabase --version 2>&1 || echo 'NOT AVAILABLE')"
+              echo "   Project reference: $SUPABASE_PROJECT_REF"
+              echo "   Database URL: ${STAGING_DB_URL:0:20}... (masked)"
+              echo "   Try running: supabase link --project-ref YOUR_PROJECT_REF --db-url 'postgresql://...'"
+              exit 1
+            fi
+          fi
+
       - name: Push migrations to STAGING
         env:
           STAGING_DB_URL: ${{ secrets.STAGING_DB_URL }}
@@ -141,6 +163,8 @@ jobs:
     environment: production   # requires manual approval in GitHub Environments
     permissions:
       contents: read
+    env:
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -221,6 +245,28 @@ jobs:
             echo "Available binaries:"
             find "$HOME/.supabase" -type f 2>/dev/null || echo "No files found"
             exit 1
+          fi
+
+      - name: Link Supabase CLI to project
+        env:
+          PROD_DB_URL: ${{ secrets.PROD_DB_URL }}
+        run: |
+          echo "🔗 Linking Supabase CLI to project..."
+          if supabase link --project-ref "$SUPABASE_PROJECT_REF" --db-url "$PROD_DB_URL" 2>&1; then
+            echo "✅ Successfully linked Supabase CLI to project"
+          else
+            echo "⚠️ Linking failed, trying with --debug flag..."
+            if supabase link --project-ref "$SUPABASE_PROJECT_REF" --db-url "$PROD_DB_URL" --debug 2>&1; then
+              echo "✅ Successfully linked Supabase CLI to project (with debug)"
+            else
+              echo "❌ ERROR: Failed to link Supabase CLI to project"
+              echo "📊 Diagnostic information:"
+              echo "   Supabase CLI version: $(supabase --version 2>&1 || echo 'NOT AVAILABLE')"
+              echo "   Project reference: $SUPABASE_PROJECT_REF"
+              echo "   Database URL: ${PROD_DB_URL:0:20}... (masked)"
+              echo "   Try running: supabase link --project-ref YOUR_PROJECT_REF --db-url 'postgresql://...'"
+              exit 1
+            fi
           fi
 
       - name: Push migrations to PROD
