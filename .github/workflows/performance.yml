@@ -11,6 +11,12 @@ on:
   repository_dispatch:
     types: [workflow-trigger]
 
+# push and pull_request both fire on every merge commit; cancel the older,
+# now-stale run instead of piling up duplicates against the 2-hour cron.
+concurrency:
+  group: performance-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
   PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
