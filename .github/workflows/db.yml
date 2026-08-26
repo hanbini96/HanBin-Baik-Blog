@@ -43,10 +43,7 @@ jobs:
           echo ""
           echo "📊 Network Connectivity Report:"
           echo "   curl: $(which curl && curl --version | head -1 || echo 'NOT AVAILABLE')"
-          echo "   DNS resolution: $(timeout 5 nslookup cli.supabase.com 2>&1 | grep -E 'Address|Name:' || echo 'FAILED')"
-          echo "   HTTP connectivity: $(curl -I -fsSL https://cli.supabase.com --max-time 10 2>&1 | head -3 || echo 'FAILED')"
           echo "   GitHub connectivity: $(curl -I -fsSL https://github.com --max-time 10 2>&1 | head -3 || echo 'FAILED')"
-          echo "   DNS retry test: $(timeout 15 curl -fsSL --retry 3 --retry-delay 5 --max-time 15 https://cli.supabase.com -o /dev/null 2>&1 && echo 'SUCCESS' || echo 'FAILED')"
         
       - name: Install Supabase CLI
         run: |
@@ -55,72 +52,47 @@ jobs:
           # Create installation directory first
           mkdir -p "$HOME/.supabase/bin"
           
-          # Enhanced DNS resolution with retry logic and fallback DNS servers
-          echo "🔄 Testing DNS resolution with retry logic..."
-          
-          # Try with multiple DNS approaches
-          DNS_SUCCESS=false
-          
-          # Method 1: Direct curl with retry
-          if timeout 30 curl -fsSL --retry 5 --retry-delay 10 --max-time 30 https://cli.supabase.com -o /dev/null 2>&1; then
-            DNS_SUCCESS=true
-            echo "✅ DNS resolution successful"
-          else
-            # Method 2: Try with explicit DNS resolution using /etc/hosts fallback
-            echo "⚠️ Primary DNS failed, trying alternative resolution methods..."
-            
-            # Add Supabase CLI IP to /etc/hosts as fallback (GitHub Actions may have issues with external DNS)
-            echo "185.199.108.133 cli.supabase.com" | sudo tee -a /etc/hosts > /dev/null 2>&1
-            echo "185.199.109.133 cli.supabase.com" | sudo tee -a /etc/hosts > /dev/null 2>&1
-            echo "185.199.110.133 cli.supabase.com" | sudo tee -a /etc/hosts > /dev/null 2>&1
-            echo "185.199.111.133 cli.supabase.com" | sudo tee -a /etc/hosts > /dev/null 2>&1
-            
-            # Wait a moment for DNS cache to refresh
-            sleep 2
-            
-            # Try again with the hosts file entry
-            if timeout 30 curl -fsSL --max-time 30 https://cli.supabase.com -o /dev/null 2>&1; then
-              DNS_SUCCESS=true
-              echo "✅ DNS resolution successful (using /etc/hosts fallback)"
-            else
-              echo "❌ ERROR: DNS resolution failed after multiple retries"
-              echo "📊 Diagnostic information:"
-              echo "   curl availability: $(which curl || echo 'NOT FOUND')"
-              echo "   curl version: $(curl --version 2>&1 | head -1 || echo 'FAILED')"
-              echo "   DNS lookup: $(timeout 10 nslookup cli.supabase.com 2>&1 || echo 'FAILED')"
-              echo "   Network test: $(curl -I -fsSL --connect-timeout 10 https://cli.supabase.com 2>&1 | head -5 || echo 'FAILED')"
-              echo "   GitHub connectivity: $(curl -I -fsSL --connect-timeout 10 https://github.com 2>&1 | head -3 || echo 'FAILED')"
-              echo "   /etc/hosts entries for cli.supabase.com:"
-              grep "cli.supabase.com" /etc/hosts || echo "   No entries found"
-              exit 1
-            fi
-          fi
-          
-          # Method 1: Official installation script with proper error handling
-          echo "🚀 Method 1: Official installation script"
-          if curl -fsSL --retry 3 --retry-delay 5 --max-time 60 https://cli.supabase.com/install/linux > /tmp/supabase_install.sh 2>&1 && bash /tmp/supabase_install.sh; then
+          # Method 1: Use GitHub API URL directly to avoid DNS issues
+          echo "🚀 Method 1: Official installation script (GitHub API URL)"
+          if curl -fsSL --retry 3 --retry-delay 5 --max-time 60 https://github.com/supabase/cli/releases/download/v2.115.0/install > /tmp/supabase_install.sh 2>&1 && bash /tmp/supabase_install.sh; then
             echo "✅ Official installation succeeded"
             rm -f /tmp/supabase_install.sh
           else
-            echo "❌ Official installation failed, trying direct download..."
+            echo "❌ Official installation failed, trying direct binary download..."
             rm -f /tmp/supabase_install.sh
             
-            # Method 2: Direct binary download with fallback
-            echo "🔄 Method 2: Direct binary download"
-            local_arch="$(uname -s)_$(uname -m)"
-            binary_url="https://github.com/supabase/cli/releases/latest/download/supabase_${local_arch}"
+            # Method 2: Direct binary download with correct architecture detection
+            echo "🔄 Method 2: Direct binary download with architecture detection"
             
-            if curl -fsSL -o "$HOME/.supabase/bin/supabase" "$binary_url"; then
+            # Detect system architecture correctly
+            SYSTEM=$(uname -s | tr '[:upper:]' '[:lower:]')
+            MACHINE=$(uname -m)
+            
+            case "$MACHINE" in
+              x86_64) ARCH="amd64" ;;
+              aarch64) ARCH="arm64" ;;
+              arm64) ARCH="arm64" ;;
+              *) ARCH="amd64" ;;
+            esac
+            
+            binary_url="https://github.com/supabase/cli/releases/download/v2.115.0/supabase_${SYSTEM}_${ARCH}.tar.gz"
+            
+            echo "   Detected system: ${SYSTEM}, architecture: ${ARCH}"
+            echo "   Binary URL: $binary_url"
+            
+            if curl -fsSL --retry 3 --retry-delay 5 --max-time 60 -o "/tmp/supabase.tar.gz" "$binary_url"; then
+              tar -xzf /tmp/supabase.tar.gz -C "$HOME/.supabase/bin" supabase 2>&1
               chmod +x "$HOME/.supabase/bin/supabase"
+              rm -f /tmp/supabase.tar.gz
               echo "✅ Direct binary download succeeded"
             else
               echo "❌ ERROR: All installation methods failed"
               echo "📊 Diagnostic information:"
               echo "   curl availability: $(which curl || echo 'NOT FOUND')"
               echo "   curl version: $(curl --version 2>&1 | head -1 || echo 'FAILED')"
-              echo "   Network test: $(curl -I -fsSL https://cli.supabase.com 2>&1 | head -3 || echo 'FAILED')"
+              echo "   GitHub connectivity: $(curl -I -fsSL --connect-timeout 10 https://github.com 2>&1 | head -3 || echo 'FAILED')"
               echo "   Installation directory: $(ls -la "$HOME/.supabase/bin" 2>&1 || echo 'NOT CREATED')"
-              echo "   Available binaries: https://github.com/supabase/cli/releases"
+              echo "   Available binaries: https://github.com/supabase/cli/releases/tag/v2.115.0"
               exit 1
             fi
           fi
@@ -183,8 +155,6 @@ jobs:
         run: |
           echo "📊 Network Connectivity Report:"
           echo "   curl: $(which curl && curl --version | head -1 || echo 'NOT AVAILABLE')"
-          echo "   DNS resolution: $(timeout 5 nslookup cli.supabase.com 2>&1 | grep -E 'Address|Name:' || echo 'FAILED')"
-          echo "   HTTP connectivity: $(curl -I -fsSL https://cli.supabase.com --max-time 10 2>&1 | head -3 || echo 'FAILED')"
           echo "   GitHub connectivity: $(curl -I -fsSL https://github.com --max-time 10 2>&1 | head -3 || echo 'FAILED')"
 
       - name: Install Supabase CLI
@@ -194,54 +164,13 @@ jobs:
           # Create installation directory first
           mkdir -p "$HOME/.supabase/bin"
           
-          # Enhanced DNS resolution with retry logic and fallback DNS servers
-          echo "🔄 Testing DNS resolution with retry logic..."
-          
-          # Try with multiple DNS approaches
-          DNS_SUCCESS=false
-          
-          # Method 1: Direct curl with retry
-          if timeout 30 curl -fsSL --retry 5 --retry-delay 10 --max-time 30 https://cli.supabase.com -o /dev/null 2>&1; then
-            DNS_SUCCESS=true
-            echo "✅ DNS resolution successful"
-          else
-            # Method 2: Try with explicit DNS resolution using /etc/hosts fallback
-            echo "⚠️ Primary DNS failed, trying alternative resolution methods..."
-            
-            # Add Supabase CLI IP to /etc/hosts as fallback (GitHub Actions may have issues with external DNS)
-            echo "185.199.108.133 cli.supabase.com" | sudo tee -a /etc/hosts > /dev/null 2>&1
-            echo "185.199.109.133 cli.supabase.com" | sudo tee -a /etc/hosts > /dev/null 2>&1
-            echo "185.199.110.133 cli.supabase.com" | sudo tee -a /etc/hosts > /dev/null 2>&1
-            echo "185.199.111.133 cli.supabase.com" | sudo tee -a /etc/hosts > /dev/null 2>&1
-            
-            # Wait a moment for DNS cache to refresh
-            sleep 2
-            
-            # Try again with the hosts file entry
-            if timeout 30 curl -fsSL --max-time 30 https://cli.supabase.com -o /dev/null 2>&1; then
-              DNS_SUCCESS=true
-              echo "✅ DNS resolution successful (using /etc/hosts fallback)"
-            else
-              echo "❌ ERROR: DNS resolution failed after multiple retries"
-              echo "📊 Diagnostic information:"
-              echo "   curl availability: $(which curl || echo 'NOT FOUND')"
-              echo "   curl version: $(curl --version 2>&1 | head -1 || echo 'FAILED')"
-              echo "   DNS lookup: $(timeout 10 nslookup cli.supabase.com 2>&1 || echo 'FAILED')"
-              echo "   Network test: $(curl -I -fsSL --connect-timeout 10 https://cli.supabase.com 2>&1 | head -5 || echo 'FAILED')"
-              echo "   GitHub connectivity: $(curl -I -fsSL --connect-timeout 10 https://github.com 2>&1 | head -3 || echo 'FAILED')"
-              echo "   /etc/hosts entries for cli.supabase.com:"
-              grep "cli.supabase.com" /etc/hosts || echo "   No entries found"
-              exit 1
-            fi
-          fi
-          
-          # Method 1: Official installation script with proper error handling
-          echo "🚀 Method 1: Official installation script"
-          if curl -fsSL --retry 3 --retry-delay 5 --max-time 60 https://cli.supabase.com/install/linux > /tmp/supabase_install.sh 2>&1 && bash /tmp/supabase_install.sh; then
+          # Method 1: Use GitHub API URL directly to avoid DNS issues
+          echo "🚀 Method 1: Official installation script (GitHub API URL)"
+          if curl -fsSL --retry 3 --retry-delay 5 --max-time 60 https://github.com/supabase/cli/releases/download/v2.115.0/install > /tmp/supabase_install.sh 2>&1 && bash /tmp/supabase_install.sh; then
             echo "✅ Official installation succeeded"
             rm -f /tmp/supabase_install.sh
           else
-            echo "❌ Official installation failed, trying direct download..."
+            echo "❌ Official installation failed, trying direct binary download..."
             rm -f /tmp/supabase_install.sh
             
             # Method 2: Direct binary download with correct architecture detection
@@ -273,9 +202,9 @@ jobs:
               echo "📊 Diagnostic information:"
               echo "   curl availability: $(which curl || echo 'NOT FOUND')"
               echo "   curl version: $(curl --version 2>&1 | head -1 || echo 'FAILED')"
-              echo "   Network test: $(curl -I -fsSL https://cli.supabase.com 2>&1 | head -3 || echo 'FAILED')"
+              echo "   GitHub connectivity: $(curl -I -fsSL --connect-timeout 10 https://github.com 2>&1 | head -3 || echo 'FAILED')"
               echo "   Installation directory: $(ls -la "$HOME/.supabase/bin" 2>&1 || echo 'NOT CREATED')"
-              echo "   Available binaries: https://github.com/supabase/cli/releases"
+              echo "   Available binaries: https://github.com/supabase/cli/releases/tag/v2.115.0"
               exit 1
             fi
           fi
