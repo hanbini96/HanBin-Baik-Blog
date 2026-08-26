@@ -213,10 +213,24 @@ jobs:
             }
 
             const pct = (n) => (n == null ? 'n/a' : `${Math.round(n * 100)}%`);
-            const rows = manifest.map((r) => {
-              const c = r.summary || {};
-              const link = links[r.url] || r.htmlPath || '';
-              return `| ${r.url} | ${pct(c.performance)} | ${pct(c.accessibility)} | ${pct(c['best-practices'])} | ${pct(c.seo)} | ${link ? `[report](${link})` : 'n/a'} |`;
+            const avg = (nums) => (nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : null);
+
+            // lighthouserc.js runs each URL numberOfRuns times, so manifest
+            // has one entry per run, not per URL - group and average so each
+            // URL gets exactly one row instead of a repeated block.
+            const byUrl = new Map();
+            for (const r of manifest) {
+              if (!byUrl.has(r.url)) byUrl.set(r.url, []);
+              byUrl.get(r.url).push(r.summary || {});
+            }
+
+            const rows = [...byUrl.entries()].map(([url, summaries]) => {
+              const performance = avg(summaries.map((s) => s.performance).filter((n) => n != null));
+              const accessibility = avg(summaries.map((s) => s.accessibility).filter((n) => n != null));
+              const bestPractices = avg(summaries.map((s) => s['best-practices']).filter((n) => n != null));
+              const seo = avg(summaries.map((s) => s.seo).filter((n) => n != null));
+              const link = links[url] || '';
+              return `| ${url} | ${pct(performance)} | ${pct(accessibility)} | ${pct(bestPractices)} | ${pct(seo)} | ${link ? `[report](${link})` : 'n/a'} |`;
             }).join('\n');
 
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
