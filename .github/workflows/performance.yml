@@ -233,10 +233,12 @@ jobs:
             ].join('\n');
 
             const label = 'lighthouse-tracking';
+            // state: 'all' - if the tracking issue was ever closed, reopen and
+            // update it below instead of creating a second one from scratch.
             const existing = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              state: 'open',
+              state: 'all',
               labels: label,
             });
 
@@ -245,6 +247,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: existing.data[0].number,
+                state: 'open',
                 body,
               });
               core.info(`Updated Lighthouse tracking issue #${existing.data[0].number}`);
