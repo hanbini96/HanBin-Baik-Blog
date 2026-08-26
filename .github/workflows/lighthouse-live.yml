@@ -1,0 +1,147 @@
+name: Lighthouse Live Site Audit
+
+# Triggered by the Deploy workflow's completion rather than push/schedule
+# directly, so this always audits the site *after* a deploy actually lands
+# instead of racing it (performance.yml and github_pages.yml are separate
+# workflows triggered by the same push, with no ordering guarantee between
+# them). Runs on whichever branch's Deploy to GitHub Pages run completed -
+# gated below to only act on a successful one.
+on:
+  workflow_run:
+    workflows: ["Deploy to GitHub Pages"]
+    types: [completed]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: lighthouse-live
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: Lighthouse Live Site Audit
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install Lighthouse CLI globally
+        run: |
+          npm install -g lighthouse
+          lighthouse --version
+
+      - name: Run Lighthouse audits (one per URL)
+        run: |
+          set -e
+          # The Lighthouse CLI only accepts a single positional <url> per
+          # invocation - passing multiple URLs to one call (the previous
+          # approach) silently audits just the first and drops the rest.
+          declare -A urls=(
+            [home]="https://hanbini96.github.io/HanBin-Baik-Blog/"
+            [blog]="https://hanbini96.github.io/HanBin-Baik-Blog/blog"
+            [about]="https://hanbini96.github.io/HanBin-Baik-Blog/about"
+          )
+          for key in "${!urls[@]}"; do
+            url="${urls[$key]}"
+            echo "🔍 Auditing $url"
+            lighthouse "$url" \
+              --output=json --output=html \
+              --output-path="./lighthouse-live-${key}" \
+              --chrome-flags="--no-sandbox --headless --disable-gpu" \
+              --only-categories=performance,accessibility,best-practices,seo \
+              --throttling.cpuSlowdown=2
+            if [ ! -f "./lighthouse-live-${key}.report.json" ]; then
+              echo "❌ ERROR: expected ./lighthouse-live-${key}.report.json was not produced"
+              ls -la .
+              exit 1
+            fi
+          done
+          echo "✅ All audits completed"
+          ls -la lighthouse-live-*
+
+      - name: Upload Live Site Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-live-reports-${{ github.event.workflow_run.head_sha }}
+          path: |
+            lighthouse-live-*.report.json
+            lighthouse-live-*.report.html
+          retention-days: 30
+
+      - name: Update Lighthouse tracking issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            const urlMap = {
+              home: 'https://hanbini96.github.io/HanBin-Baik-Blog/',
+              blog: 'https://hanbini96.github.io/HanBin-Baik-Blog/blog',
+              about: 'https://hanbini96.github.io/HanBin-Baik-Blog/about',
+            };
+
+            const pct = (n) => (n == null ? 'n/a' : `${Math.round(n * 100)}%`);
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const deployRunUrl = context.payload.workflow_run.html_url;
+
+            const rows = Object.entries(urlMap).map(([key, url]) => {
+              let categories = {};
+              try {
+                const report = JSON.parse(fs.readFileSync(`./lighthouse-live-${key}.report.json`, 'utf8'));
+                categories = report.categories || {};
+              } catch (e) {
+                core.warning(`Could not read lighthouse-live-${key}.report.json: ${e.message}`);
+              }
+              const p = categories.performance?.score;
+              const a = categories.accessibility?.score;
+              const bp = categories['best-practices']?.score;
+              const s = categories.seo?.score;
+              return `| ${url} | ${pct(p)} | ${pct(a)} | ${pct(bp)} | ${pct(s)} | [report](${runUrl}#artifacts) |`;
+            }).join('\n');
+
+            const body = [
+              '## Lighthouse Tracking (Live Site)',
+              '',
+              `Last updated: ${new Date().toISOString()} — audit [run ${context.runId}](${runUrl}), triggered by [Deploy to GitHub Pages run ${context.payload.workflow_run.id}](${deployRunUrl}) on \`${context.payload.workflow_run.head_branch}\` @ \`${context.payload.workflow_run.head_sha.slice(0, 7)}\``,
+              '',
+              '| URL | Performance | Accessibility | Best Practices | SEO | Report |',
+              '|---|---|---|---|---|---|',
+              rows,
+              '',
+              '_Auto-updated by `lighthouse-live.yml` after each successful GitHub Pages deploy, auditing the actual deployed site. Report JSON/HTML are in this run\'s artifacts (30-day retention). This is a live snapshot, not a history log._',
+            ].join('\n');
+
+            const label = 'lighthouse-tracking';
+            // state: 'all' - if the tracking issue was ever closed, reopen and
+            // update it below instead of creating a second one from scratch.
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'all',
+              labels: label,
+            });
+
+            if (existing.data.length > 0) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.data[0].number,
+                state: 'open',
+                body,
+              });
+              core.info(`Updated Lighthouse tracking issue #${existing.data[0].number}`);
+            } else {
+              const created = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: '[Performance] Lighthouse Tracking',
+                body,
+                labels: [label, 'performance', 'automated'],
+              });
+              core.info(`Created Lighthouse tracking issue #${created.data.number}`);
+            }
