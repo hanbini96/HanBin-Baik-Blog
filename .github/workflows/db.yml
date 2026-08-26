@@ -19,6 +19,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -111,9 +114,29 @@ jobs:
             exit 1
           fi
 
+      - name: Link Supabase CLI to project
+        run: |
+          echo "🔗 Linking Supabase CLI to project..."
+          if supabase link --project-ref "$SUPABASE_PROJECT_REF" 2>&1; then
+            echo "✅ Successfully linked Supabase CLI to project"
+          else
+            echo "⚠️ Linking failed, trying with --debug flag..."
+            if supabase link --project-ref "$SUPABASE_PROJECT_REF" --debug 2>&1; then
+              echo "✅ Successfully linked Supabase CLI to project (with debug)"
+            else
+              echo "❌ ERROR: Failed to link Supabase CLI to project"
+              echo "📊 Diagnostic information:"
+              echo "   Supabase CLI version: $(supabase --version 2>&1 || echo 'NOT AVAILABLE')"
+              echo "   Project reference: $SUPABASE_PROJECT_REF"
+              echo "   Try running: supabase link --project-ref YOUR_PROJECT_REF"
+              exit 1
+            fi
+          fi
+
       - name: Push migrations to STAGING
         env:
           STAGING_DB_URL: ${{ secrets.STAGING_DB_URL }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
           if [ -z "$STAGING_DB_URL" ]; then
             echo "❌ ERROR: STAGING_DB_URL secret is missing"
@@ -121,18 +144,53 @@ jobs:
             echo "Connection string format: postgresql://postgres:[password]@db.supabase.co:5432/postgres?search_path=public&sslmode=require"
             exit 1
           fi
+          
           echo "✅ STAGING_DB_URL secret found, applying migrations..."
           echo "📋 Migration files to be applied:"
           ls -la supabase/migrations/ || true
+          
+          echo ""
+          echo "🔍 Running comprehensive network diagnostics..."
+          echo "📊 GitHub Actions Runner IP:"
+          curl -s https://api.ipify.org || echo "IP detection failed"
+          echo "🔗 Testing GitHub connectivity:"
+          curl -I -fsSL --max-time 10 https://github.com 2>&1 | head -3 || echo "GitHub connectivity: FAILED"
+          echo "🌐 Testing Supabase API connectivity:"
+          curl -I -fsSL --max-time 10 https://api.supabase.com 2>&1 | head -3 || echo "Supabase API connectivity: FAILED"
+          
+          echo ""
           echo "🚀 Applying migrations to STAGING database..."
-          supabase db push --db-url "$STAGING_DB_URL" --debug || {
+          echo "💡 Note: If this fails with connection errors, your GitHub Actions IP may be blocked by Supabase network restrictions"
+          echo "📄 Supabase Network Restrictions: https://supabase.com/dashboard/project/_/database/settings"
+          echo ""
+          
+          # Try to push migrations with detailed error handling
+          if supabase db push --db-url "$STAGING_DB_URL" --debug; then
+            echo "✅ Migrations applied successfully to STAGING"
+          else
+            echo ""
             echo "❌ ERROR: Failed to apply migrations to STAGING"
-            echo "Check Supabase CLI version and database connection"
-            echo "Debug info:"
-            supabase status || true
+            echo ""
+            echo "🔧 Troubleshooting Steps:"
+            echo "1. Check if your GitHub Actions IP is blocked in Supabase network restrictions"
+            echo "2. Verify the STAGING_DB_URL secret is correct"
+            echo "3. Test the database connection manually:"
+            echo "   psql \"$STAGING_DB_URL\" -c \"SELECT version();\""
+            echo ""
+            echo "📊 Debug Information:"
+            echo "   Supabase CLI version: $(supabase --version 2>&1 || echo 'NOT AVAILABLE')"
+            echo "   Project reference: $SUPABASE_PROJECT_REF"
+            echo "   Database URL: ${STAGING_DB_URL:0:20}... (hidden for security)"
+            echo ""
+            echo "💡 Solutions:"
+            echo "   A) Add GitHub Actions IPs to Supabase network allowlist"
+            echo "   B) Use a VPN or proxy in the workflow"
+            echo "   C) Run migrations manually via Supabase Dashboard"
+            echo "   D) Contact Supabase support to whitelist your GitHub Actions IPs"
+            echo ""
+            echo "📄 Supabase Network Settings: https://supabase.com/dashboard/project/_/database/settings"
             exit 1
-          }
-          echo "✅ Migrations applied successfully to STAGING"
+          fi
 
   deploy-prod:
     name: Apply migrations to PROD (manual)
@@ -141,6 +199,10 @@ jobs:
     environment: production   # requires manual approval in GitHub Environments
     permissions:
       contents: read
+    env:
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      PROD_DB_URL: ${{ secrets.PROD_DB_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -223,6 +285,27 @@ jobs:
             exit 1
           fi
 
+      - name: Link Supabase CLI to project
+        env:
+          PROD_DB_URL: ${{ secrets.PROD_DB_URL }}
+        run: |
+          echo "🔗 Linking Supabase CLI to project..."
+          if supabase link --project-ref "$SUPABASE_PROJECT_REF" 2>&1; then
+            echo "✅ Successfully linked Supabase CLI to project"
+          else
+            echo "⚠️ Linking failed, trying with --debug flag..."
+            if supabase link --project-ref "$SUPABASE_PROJECT_REF" --debug 2>&1; then
+              echo "✅ Successfully linked Supabase CLI to project (with debug)"
+            else
+              echo "❌ ERROR: Failed to link Supabase CLI to project"
+              echo "📊 Diagnostic information:"
+              echo "   Supabase CLI version: $(supabase --version 2>&1 || echo 'NOT AVAILABLE')"
+              echo "   Project reference: $SUPABASE_PROJECT_REF"
+              echo "   Try running: supabase link --project-ref YOUR_PROJECT_REF"
+              exit 1
+            fi
+          fi
+
       - name: Push migrations to PROD
         env:
           PROD_DB_URL: ${{ secrets.PROD_DB_URL }}
@@ -232,11 +315,45 @@ jobs:
             echo "Please add the secret to GitHub"
             exit 1
           fi
+          
           echo "✅ PROD_DB_URL secret found, applying migrations..."
+          echo ""
+          echo "🔍 Running comprehensive network diagnostics..."
+          echo "📊 GitHub Actions Runner IP:"
+          curl -s https://api.ipify.org || echo "IP detection failed"
+          echo "🔗 Testing GitHub connectivity:"
+          curl -I -fsSL --max-time 10 https://github.com 2>&1 | head -3 || echo "GitHub connectivity: FAILED"
+          echo "🌐 Testing Supabase API connectivity:"
+          curl -I -fsSL --max-time 10 https://api.supabase.com 2>&1 | head -3 || echo "Supabase API connectivity: FAILED"
+          
+          echo ""
           echo "🚀 Applying migrations to PRODUCTION database..."
-          supabase db push --db-url "$PROD_DB_URL" --debug || {
+          echo "💡 Note: If this fails with connection errors, your GitHub Actions IP may be blocked by Supabase network restrictions"
+          echo "📄 Supabase Network Restrictions: https://supabase.com/dashboard/project/_/database/settings"
+          echo ""
+          
+          if supabase db push --db-url "$PROD_DB_URL" --debug; then
+            echo "✅ Migrations applied successfully to PRODUCTION"
+          else
+            echo ""
             echo "❌ ERROR: Failed to apply migrations to PRODUCTION"
-            echo "Manual review required before proceeding"
+            echo ""
+            echo "🔧 Troubleshooting Steps:"
+            echo "1. Check if your GitHub Actions IP is blocked in Supabase network restrictions"
+            echo "2. Verify the PROD_DB_URL secret is correct"
+            echo "3. Test the database connection manually:"
+            echo "   psql \"$PROD_DB_URL\" -c \"SELECT version();\""
+            echo ""
+            echo "📊 Debug Information:"
+            echo "   Supabase CLI version: $(supabase --version 2>&1 || echo 'NOT AVAILABLE')"
+            echo "   Project reference: $SUPABASE_PROJECT_REF"
+            echo ""
+            echo "💡 Solutions:"
+            echo "   A) Add GitHub Actions IPs to Supabase network allowlist"
+            echo "   B) Use a VPN or proxy in the workflow"
+            echo "   C) Run migrations manually via Supabase Dashboard"
+            echo "   D) Contact Supabase support to whitelist your GitHub Actions IPs"
+            echo ""
+            echo "📄 Supabase Network Settings: https://supabase.com/dashboard/project/_/database/settings"
             exit 1
-          }
-          echo "✅ Migrations applied successfully to PRODUCTION"
+          fi
