@@ -71,11 +71,13 @@ runs:
 
     # pnpm 11+ ignores build scripts by default for security. esbuild and
     # sharp are required for Astro builds. This must run BEFORE install so
-    # the approval actually applies to that install (PNPM_ALLOW_BUILDS does
-    # not work in pnpm 11+).
+    # the approval actually applies to that install.
+    # For pnpm 11+, use PNPM_CONFIG_ALLOW_BUILDS environment variable.
     - name: Approve build scripts for pnpm 11+ security
       shell: bash
-      run: pnpm approve-builds esbuild sharp || echo "⚠️ Build scripts already approved"
+      run: |
+        echo "PNPM_CONFIG_ALLOW_BUILDS=esbuild,sharp" >> "$GITHUB_ENV"
+        echo "✅ Build scripts approved for: esbuild, sharp"
 
     - name: Install project dependencies
       if: inputs.install == 'true'
