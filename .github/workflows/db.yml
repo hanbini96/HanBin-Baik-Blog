@@ -150,6 +150,20 @@ jobs:
           echo ""
           echo "✅ Placeholders replaced successfully"
 
+      - name: Initialize Supabase profile
+        run: |
+          echo "🔧 Initializing Supabase profile..."
+          mkdir -p ~/.supabase
+          
+          # Create profile file with project reference
+          cat > ~/.supabase/config.toml <<EOF
+          [global]
+          project = "$SUPABASE_PROJECT_REF"
+          EOF
+          
+          echo "✅ Profile initialized with project reference"
+          echo "📄 Profile location: ~/.supabase/config.toml"
+
       - name: Link Supabase CLI to project
         run: |
           echo "🔗 Linking Supabase CLI to project..."
@@ -161,6 +175,9 @@ jobs:
               echo "✅ Successfully linked Supabase CLI to project (with debug)"
             else
               echo "❌ ERROR: Failed to link Supabase CLI to project"
+              echo "📊 Debug information:"
+              echo "   Supabase CLI version: $(supabase --version 2>&1 || echo 'NOT AVAILABLE')"
+              echo "   Project reference: $SUPABASE_PROJECT_REF"
               exit 1
             fi
           fi
@@ -250,6 +267,20 @@ jobs:
             echo "❌ ERROR: Installation verification failed"
             exit 1
           fi
+
+      - name: Initialize Supabase profile
+        run: |
+          echo "🔧 Initializing Supabase profile..."
+          mkdir -p ~/.supabase
+          
+          # Create profile file with project reference
+          cat > ~/.supabase/config.toml <<EOF
+          [global]
+          project = "$SUPABASE_PROJECT_REF"
+          EOF
+          
+          echo "✅ Profile initialized with project reference"
+          echo "📄 Profile location: ~/.supabase/config.toml"
 
       - name: Replace placeholders with GitHub secrets
         run: |

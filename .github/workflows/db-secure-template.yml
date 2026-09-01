@@ -150,6 +150,20 @@ jobs:
           echo ""
           echo "✅ Placeholders replaced successfully"
 
+      - name: Initialize Supabase profile
+        run: |
+          echo "🔧 Initializing Supabase profile..."
+          mkdir -p ~/.supabase
+          
+          # Create profile file with project reference
+          cat > ~/.supabase/config.toml <<EOF
+          [global]
+          project = "$SUPABASE_PROJECT_REF"
+          EOF
+          
+          echo "✅ Profile initialized with project reference"
+          echo "📄 Profile location: ~/.supabase/config.toml"
+
       - name: Link Supabase CLI to project
         run: |
           echo "🔗 Linking Supabase CLI to project..."
@@ -229,18 +243,56 @@ jobs:
         run: |
           echo "🔧 Installing Supabase CLI with comprehensive error handling..."
           
+          # Create installation directory first
           mkdir -p "$HOME/.supabase/bin"
           
-          echo "🚀 Method 1: Official installation script"
+          # Method 1: Use GitHub API URL directly to avoid DNS issues
+          echo "🚀 Method 1: Official installation script (GitHub API URL)"
           if curl -fsSL --retry 3 --retry-delay 5 --max-time 60 https://github.com/supabase/cli/releases/download/v2.115.0/install > /tmp/supabase_install.sh 2>&1 && bash /tmp/supabase_install.sh; then
             echo "✅ Official installation succeeded"
             rm -f /tmp/supabase_install.sh
           else
-            echo "❌ Official installation failed"
+            echo "❌ Official installation failed, trying direct binary download..."
             rm -f /tmp/supabase_install.sh
-            exit 1
+            
+            # Method 2: Direct binary download with correct architecture detection
+            echo "🔄 Method 2: Direct binary download with architecture detection"
+            
+            # Detect system architecture correctly
+            SYSTEM=$(uname -s | tr '[:upper:]' '[:lower:]')
+            MACHINE=$(uname -m)
+            
+            case "$MACHINE" in
+              x86_64) ARCH="amd64" ;;
+              aarch64) ARCH="arm64" ;;
+              arm64) ARCH="arm64" ;;
+              *) ARCH="amd64" ;;
+            esac
+            
+            binary_url="https://github.com/supabase/cli/releases/download/v2.115.0/supabase_${SYSTEM}_${ARCH}.tar.gz"
+            
+            echo "   Detected system: ${SYSTEM}, architecture: ${ARCH}"
+            echo "   Binary URL: $binary_url"
+            
+            if curl -fsSL --retry 3 --retry-delay 5 --max-time 60 -o "/tmp/supabase.tar.gz" "$binary_url"; then
+              tar -xzf /tmp/supabase.tar.gz -C "$HOME/.supabase/bin" supabase 2>&1
+              chmod +x "$HOME/.supabase/bin/supabase"
+              rm -f /tmp/supabase.tar.gz
+              echo "✅ Direct binary download succeeded"
+            else
+              echo "❌ ERROR: All installation methods failed"
+              echo "📊 Diagnostic information:"
+              echo "   curl availability: $(which curl || echo 'NOT FOUND')"
+              echo "   curl version: $(curl --version 2>&1 | head -1 || echo 'FAILED')"
+              echo "   GitHub connectivity: $(curl -I -fsSL --connect-timeout 10 https://github.com 2>&1 | head -3 || echo 'FAILED')"
+              echo "   Installation directory: $(ls -la "$HOME/.supabase/bin" 2>&1 || echo 'NOT CREATED')"
+              echo "   Available binaries: https://github.com/supabase/cli/releases/tag/v2.115.0"
+              exit 1
+            fi
           fi
           
+          # Verify installation
+          echo "🔍 Verifying Supabase CLI installation..."
           echo "$HOME/.supabase/bin" >> $GITHUB_PATH
           export PATH="$HOME/.supabase/bin:$PATH"
           
@@ -248,8 +300,24 @@ jobs:
             echo "✅ Supabase CLI installed: $(supabase --version 2>&1)"
           else
             echo "❌ ERROR: Installation verification failed"
+            echo "Available binaries:"
+            find "$HOME/.supabase" -type f 2>/dev/null || echo "No files found"
             exit 1
           fi
+
+      - name: Initialize Supabase profile
+        run: |
+          echo "🔧 Initializing Supabase profile..."
+          mkdir -p ~/.supabase
+          
+          # Create profile file with project reference
+          cat > ~/.supabase/config.toml <<EOF
+          [global]
+          project = "$SUPABASE_PROJECT_REF"
+          EOF
+          
+          echo "✅ Profile initialized with project reference"
+          echo "📄 Profile location: ~/.supabase/config.toml"
 
       - name: Replace placeholders with GitHub secrets
         run: |
