@@ -60,7 +60,7 @@ jobs:
           echo ""
           echo "📊 Network Connectivity Report:"
           echo "   curl: $(which curl && curl --version | head -1 || echo 'NOT AVAILABLE')"
-          echo "   GitHub connectivity: $(curl -I -fsSL https://github.com --max-time 10 2>&1 | head -3 || echo 'FAILED')"
+          echo "   GitHub connectivity: $(curl -I -fsSL --max-time 10 "https://github.com" 2>&1 | head -3 || echo 'FAILED')"
         
       - name: Pre-Migration Validation
         id: pre_validation
@@ -147,7 +147,7 @@ jobs:
           
           # Method 1: Use GitHub API URL directly to avoid DNS issues
           echo "🚀 Method 1: Official installation script (GitHub API URL)"
-          if curl -fsSL --retry 3 --retry-delay 5 --max-time 60 https://github.com/supabase/cli/releases/download/v2.115.0/install > /tmp/supabase_install.sh 2>&1 && bash /tmp/supabase_install.sh; then
+          if curl -fsSL --retry 3 --retry-delay 5 --max-time 60 "https://github.com/supabase/cli/releases/download/v2.115.0/install" > /tmp/supabase_install.sh 2>&1 && bash /tmp/supabase_install.sh; then
             echo "✅ Official installation succeeded"
             rm -f /tmp/supabase_install.sh
           else
@@ -183,7 +183,7 @@ jobs:
               echo "📊 Diagnostic information:"
               echo "   curl availability: $(which curl || echo 'NOT FOUND')"
               echo "   curl version: $(curl --version 2>&1 | head -1 || echo 'FAILED')"
-              echo "   GitHub connectivity: $(curl -I -fsSL --connect-timeout 10 https://github.com 2>&1 | head -3 || echo 'FAILED')"
+              echo "   GitHub connectivity: $(curl -I -fsSL --connect-timeout 10 "https://github.com" 2>&1 | head -3 || echo 'FAILED')"
               echo "   Installation directory: $(ls -la "$HOME/.supabase/bin" 2>&1 || echo 'NOT CREATED')"
               echo "   Available binaries: https://github.com/supabase/cli/releases/tag/v2.115.0"
               exit 1
@@ -269,11 +269,11 @@ jobs:
           echo ""
           echo "🔍 Running comprehensive network diagnostics..."
           echo "📊 GitHub Actions Runner IP:"
-          curl -s https://api.ipify.org || echo "IP detection failed"
+          curl -s "https://api.ipify.org" || echo "IP detection failed"
           echo "🔗 Testing GitHub connectivity:"
-          curl -I -fsSL --max-time 10 https://github.com 2>&1 | head -3 || echo "GitHub connectivity: FAILED"
+          curl -I -fsSL --max-time 10 "https://github.com" 2>&1 | head -3 || echo "GitHub connectivity: FAILED"
           echo "🌐 Testing Supabase API connectivity:"
-          curl -I -fsSL --max-time 10 https://api.supabase.com 2>&1 | head -3 || echo "Supabase API connectivity: FAILED"
+          curl -I -fsSL --max-time 10 "https://api.supabase.com" 2>&1 | head -3 || echo "Supabase API connectivity: FAILED"
           
           echo ""
           echo "🚀 Applying migrations to STAGING database..."
@@ -296,7 +296,7 @@ jobs:
           fi
 
       - name: Post-Migration Validation
-        if: always() && steps.apply_migrations.outcome == 'success'
+        if: always() && steps.migration_timer.outcome == 'success'
         run: |
           echo "🔍 Running post-migration validation..."
           echo "======================================"
@@ -350,7 +350,7 @@ jobs:
       - name: Calculate Migration Duration
         if: always()
         run: |
-          START_TIME=${{ steps.migration_timer.outputs.START_TIME }}
+          START_TIME="${{ steps.migration_timer.outputs.START_TIME }}"
           END_TIME=$(date +%s%3N)
           DURATION=$((END_TIME - START_TIME))
           
@@ -389,9 +389,10 @@ jobs:
         run: |
           echo "📊 Network Connectivity Report:"
           echo "   curl: $(which curl && curl --version | head -1 || echo 'NOT AVAILABLE')"
-          echo "   GitHub connectivity: $(curl -I -fsSL https://github.com --max-time 10 2>&1 | head -3 || echo 'FAILED')"
+          echo "   GitHub connectivity: $(curl -I -fsSL --max-time 10 "https://github.com" 2>&1 | head -3 || echo 'FAILED')"
 
-      - name: Install Supabase CLI
+      - name: Install Supabase CLI (Fallback)
+        if: failure()
         run: |
           echo "🔧 Installing Supabase CLI with comprehensive error handling..."
           
@@ -400,7 +401,7 @@ jobs:
           
           # Method 1: Use GitHub API URL directly to avoid DNS issues
           echo "🚀 Method 1: Official installation script (GitHub API URL)"
-          if curl -fsSL --retry 3 --retry-delay 5 --max-time 60 https://github.com/supabase/cli/releases/download/v2.115.0/install > /tmp/supabase_install.sh 2>&1 && bash /tmp/supabase_install.sh; then
+          if curl -fsSL --retry 3 --retry-delay 5 --max-time 60 "https://github.com/supabase/cli/releases/download/v2.115.0/install" > /tmp/supabase_install.sh 2>&1 && bash /tmp/supabase_install.sh; then
             echo "✅ Official installation succeeded"
             rm -f /tmp/supabase_install.sh
           else
@@ -436,7 +437,7 @@ jobs:
               echo "📊 Diagnostic information:"
               echo "   curl availability: $(which curl || echo 'NOT FOUND')"
               echo "   curl version: $(curl --version 2>&1 | head -1 || echo 'FAILED')"
-              echo "   GitHub connectivity: $(curl -I -fsSL --connect-timeout 10 https://github.com 2>&1 | head -3 || echo 'FAILED')"
+              echo "   GitHub connectivity: $(curl -I -fsSL --connect-timeout 10 "https://github.com" 2>&1 | head -3 || echo 'FAILED')"
               echo "   Installation directory: $(ls -la "$HOME/.supabase/bin" 2>&1 || echo 'NOT CREATED')"
               echo "   Available binaries: https://github.com/supabase/cli/releases/tag/v2.115.0"
               exit 1
