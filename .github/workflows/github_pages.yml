@@ -57,35 +57,35 @@ jobs:
         run: |
           echo "📊 Build Output Verification"
           echo "Size: $(du -sh dist/)"
-          echo "File count: $(find dist/ -type f | wc -l)"
+          echo "File count: $(find "dist/" -type f | wc -l)"
           
           # Remove symlinks if any (GitHub Pages doesn't allow them)
-          SYMLINKS=$(find dist/ -type l | wc -l)
-          if [ $SYMLINKS -gt 0 ]; then
+          SYMLINKS=$(find "dist/" -type l | wc -l)
+          if [ "$SYMLINKS" -gt 0 ]; then
             echo "⚠️ Found $SYMLINKS symlinks - removing them"
-            find dist/ -type l -delete
+            find "dist/" -type l -delete
           fi
           
           # Remove hard links if any (GitHub Pages doesn't allow them)
-          HARDLINKS=$(find dist/ -type f -links +1 | wc -l)
-          if [ $HARDLINKS -gt 0 ]; then
+          HARDLINKS=$(find "dist/" -type f -links +1 | wc -l)
+          if [ "$HARDLINKS" -gt 0 ]; then
             echo "⚠️ Found $HARDLINKS files with hard links - removing duplicates"
             # Remove files that have multiple hard links
-            find dist/ -type f -links +1 -delete
+            find "dist/" -type f -links +1 -delete
           fi
           
           # Check for large files (>10MB)
-          LARGE_FILES=$(find dist/ -size +10M | wc -l)
-          if [ $LARGE_FILES -gt 0 ]; then
+          LARGE_FILES=$(find "dist/" -size +10M | wc -l)
+          if [ "$LARGE_FILES" -gt 0 ]; then
             echo "⚠️ Found $LARGE_FILES files >10MB"
-            find dist/ -size +10M -ls
+            find "dist/" -size +10M -ls
           fi
           
           # Verify no symlinks or hard links remain
-          FINAL_SYMLINKS=$(find dist/ -type l | wc -l)
-          FINAL_HARDLINKS=$(find dist/ -type f -links +1 | wc -l)
+          FINAL_SYMLINKS=$(find "dist/" -type l | wc -l)
+          FINAL_HARDLINKS=$(find "dist/" -type f -links +1 | wc -l)
           
-          if [ $FINAL_SYMLINKS -gt 0 ] || [ $FINAL_HARDLINKS -gt 0 ]; then
+          if [ "$FINAL_SYMLINKS" -gt 0 ] || [ "$FINAL_HARDLINKS" -gt 0 ]; then
             echo "❌ ERROR: Found remaining symlinks ($FINAL_SYMLINKS) or hard links ($FINAL_HARDLINKS)"
             echo "This will cause GitHub Pages deployment to fail"
             exit 1
