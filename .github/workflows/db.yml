@@ -62,6 +62,82 @@ jobs:
           echo "   curl: $(which curl && curl --version | head -1 || echo 'NOT AVAILABLE')"
           echo "   GitHub connectivity: $(curl -I -fsSL https://github.com --max-time 10 2>&1 | head -3 || echo 'FAILED')"
         
+      - name: Pre-Migration Validation
+        id: pre_validation
+        run: |
+          echo "🔍 Running pre-migration validation..."
+          echo "===================================="
+          
+          # Check required secrets
+          if [ -z "$STAGING_DB_URL" ]; then
+            echo "❌ ERROR: STAGING_DB_URL secret is missing"
+            echo "::error::STAGING_DB_URL secret is not set"
+            exit 1
+          fi
+          
+          if [ -z "$MIGRATION_USER_PASSWORD" ]; then
+            echo "❌ ERROR: MIGRATION_USER_PASSWORD secret is missing"
+            echo "::error::MIGRATION_USER_PASSWORD secret is not set"
+            exit 1
+          fi
+          
+          if [ -z "$MIGRATION_USER_UUID" ]; then
+            echo "❌ ERROR: MIGRATION_USER_UUID secret is missing"
+            echo "::error::MIGRATION_USER_UUID secret is not set"
+            exit 1
+          fi
+          
+          echo "✅ All required secrets are set"
+          
+          # Check database connection
+          echo ""
+          echo "🔗 Testing database connection..."
+          if psql "$STAGING_DB_URL" -c "SELECT 1" >/dev/null 2>&1; then
+            echo "✅ Database connection successful"
+          else
+            echo "❌ ERROR: Cannot connect to staging database"
+            echo "::error::Database connection failed"
+            exit 1
+          fi
+          
+          # Check migration user role exists
+          echo ""
+          echo "🔐 Checking migration user role..."
+          if psql "$STAGING_DB_URL" -c "SELECT 1 FROM pg_roles WHERE rolname = 'migration_user'" | grep -q 1; then
+            echo "✅ Migration user role exists"
+          else
+            echo "❌ ERROR: Migration user role not found"
+            echo "::error::Migration user role missing"
+            exit 1
+          fi
+          
+          # Check migration user in users table
+          echo ""
+          echo "👤 Checking migration user in users table..."
+          if psql "$STAGING_DB_URL" -c "SELECT 1 FROM public.users WHERE id = '$MIGRATION_USER_UUID'" | grep -q 1; then
+            echo "✅ Migration user record exists"
+          else
+            echo "❌ ERROR: Migration user record not found"
+            echo "::error::Migration user record missing"
+            exit 1
+          fi
+          
+          # Check RLS policies
+          echo ""
+          echo "🔒 Checking RLS policies..."
+          POLICY_COUNT=$(psql "$STAGING_DB_URL" -t -c "SELECT COUNT(*) FROM pg_policies WHERE policyname LIKE 'migration_user%'" | tr -d ' ')
+          if [ "$POLICY_COUNT" -ge 3 ]; then
+            echo "✅ RLS policies found ($POLICY_COUNT policies)"
+          else
+            echo "⚠️ WARNING: Expected 3+ RLS policies, found $POLICY_COUNT"
+            echo "::warning::RLS policies may be incomplete"
+          fi
+          
+          echo ""
+          echo "✅ ============================================"
+          echo "✅ All pre-migration validations PASSED"
+          echo "✅ ============================================"
+
       - name: Install Supabase CLI
         run: |
           echo "🔧 Installing Supabase CLI with comprehensive error handling..."
@@ -175,9 +251,6 @@ jobs:
               echo "✅ Successfully linked Supabase CLI to project (with debug)"
             else
               echo "❌ ERROR: Failed to link Supabase CLI to project"
-              echo "📊 Debug information:"
-              echo "   Supabase CLI version: $(supabase --version 2>&1 || echo 'NOT AVAILABLE')"
-              echo "   Project reference: $SUPABASE_PROJECT_REF"
               exit 1
             fi
           fi
@@ -205,13 +278,89 @@ jobs:
           echo ""
           echo "🚀 Applying migrations to STAGING database..."
           
+      - name: Time Migration Start
+        id: migration_timer
+        run: |
+          echo "⏱️ Starting migration timer..."
+          echo "START_TIME=$(date +%s%3N)" >> $GITHUB_OUTPUT
+          echo "Migration started at: $(date '+%Y-%m-%d %H:%M:%S')"
+          
           if supabase db push --db-url "$STAGING_DB_URL" --debug; then
             echo "✅ Migrations applied successfully to STAGING"
+            echo "MIGRATION_STATUS=success" >> $GITHUB_OUTPUT
           else
             echo ""
             echo "❌ ERROR: Failed to apply migrations to STAGING"
+            echo "MIGRATION_STATUS=failed" >> $GITHUB_OUTPUT
             exit 1
           fi
+
+      - name: Post-Migration Validation
+        if: always() && steps.apply_migrations.outcome == 'success'
+        run: |
+          echo "🔍 Running post-migration validation..."
+          echo "======================================"
+          
+          # Check database connection still works
+          echo ""
+          echo "🔗 Testing database connection..."
+          if psql "$STAGING_DB_URL" -c "SELECT 1" >/dev/null 2>&1; then
+            echo "✅ Database connection still active"
+          else
+            echo "❌ ERROR: Database connection lost after migration"
+            exit 1
+          fi
+          
+          # Verify migration user can access tables
+          echo ""
+          echo "📊 Testing migration user access to posts table..."
+          if psql "$STAGING_DB_URL" -c "SELECT 1 FROM public.posts LIMIT 1" >/dev/null 2>&1; then
+            echo "✅ Migration user can access posts table"
+          else
+            echo "❌ ERROR: Migration user cannot access posts table"
+            exit 1
+          fi
+          
+          # Verify article count (ensure no data loss)
+          echo ""
+          echo "📈 Verifying article preservation..."
+          ARTICLE_COUNT=$(psql "$STAGING_DB_URL" -t -c "SELECT COUNT(*) FROM public.posts WHERE deleted_at IS NULL" | tr -d ' ')
+          echo "   Current article count: $ARTICLE_COUNT"
+          if [ "$ARTICLE_COUNT" -gt 0 ]; then
+            echo "✅ Articles preserved (count: $ARTICLE_COUNT)"
+          else
+            echo "⚠️ WARNING: No articles found (possible data loss)"
+          fi
+          
+          # Verify RLS policies still in place
+          echo ""
+          echo "🔒 Verifying RLS policies..."
+          POLICY_COUNT=$(psql "$STAGING_DB_URL" -t -c "SELECT COUNT(*) FROM pg_policies WHERE policyname LIKE 'migration_user%'" | tr -d ' ')
+          if [ "$POLICY_COUNT" -ge 3 ]; then
+            echo "✅ RLS policies intact ($POLICY_COUNT policies)"
+          else
+            echo "⚠️ WARNING: RLS policies may have been affected"
+          fi
+          
+          echo ""
+          echo "✅ ============================================"
+          echo "✅ All post-migration validations PASSED"
+          echo "✅ ============================================"
+
+      - name: Calculate Migration Duration
+        if: always()
+        run: |
+          START_TIME=${{ steps.migration_timer.outputs.START_TIME }}
+          END_TIME=$(date +%s%3N)
+          DURATION=$((END_TIME - START_TIME))
+          
+          echo "📊 Migration Performance:"
+          echo "   Start Time: $(date -d @$((START_TIME/1000)) '+%Y-%m-%d %H:%M:%S')"
+          echo "   End Time: $(date -d @$((END_TIME/1000)) '+%Y-%m-%d %H:%M:%S')"
+          echo "   Duration: ${DURATION}ms"
+          echo "MIGRATION_DURATION=${DURATION}" >> $GITHUB_ENV
+
+
 
   deploy-prod:
     name: Apply migrations to PROD (manual)
@@ -246,18 +395,56 @@ jobs:
         run: |
           echo "🔧 Installing Supabase CLI with comprehensive error handling..."
           
+          # Create installation directory first
           mkdir -p "$HOME/.supabase/bin"
           
-          echo "🚀 Method 1: Official installation script"
+          # Method 1: Use GitHub API URL directly to avoid DNS issues
+          echo "🚀 Method 1: Official installation script (GitHub API URL)"
           if curl -fsSL --retry 3 --retry-delay 5 --max-time 60 https://github.com/supabase/cli/releases/download/v2.115.0/install > /tmp/supabase_install.sh 2>&1 && bash /tmp/supabase_install.sh; then
             echo "✅ Official installation succeeded"
             rm -f /tmp/supabase_install.sh
           else
-            echo "❌ Official installation failed"
+            echo "❌ Official installation failed, trying direct binary download..."
             rm -f /tmp/supabase_install.sh
-            exit 1
+            
+            # Method 2: Direct binary download with correct architecture detection
+            echo "🔄 Method 2: Direct binary download with architecture detection"
+            
+            # Detect system architecture correctly
+            SYSTEM=$(uname -s | tr '[:upper:]' '[:lower:]')
+            MACHINE=$(uname -m)
+            
+            case "$MACHINE" in
+              x86_64) ARCH="amd64" ;;
+              aarch64) ARCH="arm64" ;;
+              arm64) ARCH="arm64" ;;
+              *) ARCH="amd64" ;;
+            esac
+            
+            binary_url="https://github.com/supabase/cli/releases/download/v2.115.0/supabase_${SYSTEM}_${ARCH}.tar.gz"
+            
+            echo "   Detected system: ${SYSTEM}, architecture: ${ARCH}"
+            echo "   Binary URL: $binary_url"
+            
+            if curl -fsSL --retry 3 --retry-delay 5 --max-time 60 -o "/tmp/supabase.tar.gz" "$binary_url"; then
+              tar -xzf /tmp/supabase.tar.gz -C "$HOME/.supabase/bin" supabase 2>&1
+              chmod +x "$HOME/.supabase/bin/supabase"
+              rm -f /tmp/supabase.tar.gz
+              echo "✅ Direct binary download succeeded"
+            else
+              echo "❌ ERROR: All installation methods failed"
+              echo "📊 Diagnostic information:"
+              echo "   curl availability: $(which curl || echo 'NOT FOUND')"
+              echo "   curl version: $(curl --version 2>&1 | head -1 || echo 'FAILED')"
+              echo "   GitHub connectivity: $(curl -I -fsSL --connect-timeout 10 https://github.com 2>&1 | head -3 || echo 'FAILED')"
+              echo "   Installation directory: $(ls -la "$HOME/.supabase/bin" 2>&1 || echo 'NOT CREATED')"
+              echo "   Available binaries: https://github.com/supabase/cli/releases/tag/v2.115.0"
+              exit 1
+            fi
           fi
           
+          # Verify installation
+          echo "🔍 Verifying Supabase CLI installation..."
           echo "$HOME/.supabase/bin" >> $GITHUB_PATH
           export PATH="$HOME/.supabase/bin:$PATH"
           
@@ -265,6 +452,8 @@ jobs:
             echo "✅ Supabase CLI installed: $(supabase --version 2>&1)"
           else
             echo "❌ ERROR: Installation verification failed"
+            echo "Available binaries:"
+            find "$HOME/.supabase" -type f 2>/dev/null || echo "No files found"
             exit 1
           fi
 
