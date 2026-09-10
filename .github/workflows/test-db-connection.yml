@@ -1,0 +1,162 @@
+# Diagnostic workflow to test database connectivity
+# Run this to identify why STAGING_DB_URL connection is failing
+
+name: Test Database Connection
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [ test-db-connection ]
+    paths:
+      - ".github/workflows/test-db-connection.yml"
+
+jobs:
+  test-connection:
+    name: Test STAGING Database Connection
+    runs-on: ubuntu-latest
+    env:
+      STAGING_DB_URL: ${{ secrets.STAGING_DB_URL }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm and Node.js
+        uses: ./.github/actions/setup-pnpm
+
+      - name: Install psql client
+        run: |
+          echo "🔧 Installing PostgreSQL client (psql)..."
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client
+          psql --version
+
+      - name: Display Database URL (masked)
+        run: |
+          echo "📊 Database Connection Test"
+          echo "================================"
+          echo "SUPABASE_PROJECT_REF: $SUPABASE_PROJECT_REF"
+          echo "SUPABASE_URL: $SUPABASE_URL"
+          echo "STAGING_DB_URL: ${STAGING_DB_URL//*@/\\\\*@}"  # Mask password part
+          echo ""
+
+      - name: Test Database Connection with Full Diagnostics
+        id: db_test
+        run: |
+          echo "🔗 Testing database connection with full diagnostics..."
+          echo "======================================================"
+          
+          # Extract connection details from URL
+          if [ -z "$STAGING_DB_URL" ]; then
+            echo "❌ ERROR: STAGING_DB_URL secret is missing!"
+            echo "::error::STAGING_DB_URL secret not set"
+            exit 1
+          fi
+          
+          echo "📋 Connection URL format check:"
+          echo "   URL: ${STAGING_DB_URL//*@/\\\\*@}"
+          
+          # Check if URL contains expected components
+          if echo "$STAGING_DB_URL" | grep -q "supabase"; then
+            echo "✅ URL contains 'supabase'"
+          else
+            echo "❌ URL does NOT contain 'supabase' - INVALID FORMAT"
+            echo "::error::Invalid database URL format"
+          fi
+          
+          if echo "$STAGING_DB_URL" | grep -q "@"; then
+            echo "✅ URL contains '@' separator"
+          else
+            echo "❌ URL missing '@' separator"
+            echo "::error::Invalid database URL format"
+          fi
+          
+          echo ""
+          echo "🌐 Network Diagnostics:"
+          echo "   GitHub Actions IP: $(curl -s https://api.ipify.org 2>/dev/null || echo 'UNKNOWN')"
+          echo "   curl version: $(curl --version 2>&1 | head -1 || echo 'FAILED')"
+          echo "   GitHub connectivity: $(curl -I -fsSL --max-time 10 "https://github.com" 2>&1 | head -1 || echo 'FAILED')"
+          echo "   Supabase API connectivity: $(curl -I -fsSL --max-time 10 "https://api.supabase.com" 2>&1 | head -1 || echo 'FAILED')"
+          
+          echo ""
+          echo "🔍 Attempting database connection..."
+          echo "   Command: psql \"$STAGING_DB_URL\" -c \"SELECT 1\""
+          echo ""
+          
+          # Try connection with timeout and full error output
+          if timeout 10 psql "$STAGING_DB_URL" -c "SELECT 1" 2>&1; then
+            echo ""
+            echo "✅ SUCCESS: Database connection works!"
+            echo "::set-output name=status::success"
+            exit 0
+          else
+            echo ""
+            echo "❌ FAILED: Database connection failed"
+            echo ""
+            echo "📊 Full error diagnostics:"
+            timeout 10 psql "$STAGING_DB_URL" -c "SELECT 1" 2>&1 || true
+            echo ""
+            echo "🔧 Possible causes:"
+            echo "   1. Database URL format is incorrect"
+            echo "   2. Database server is not accessible from GitHub Actions"
+            echo "   3. Firewall/network restrictions blocking connection"
+            echo "   4. Database is down or credentials are wrong"
+            echo "   5. SSL/TLS requirements not met"
+            echo ""
+            echo "💡 Solution steps:"
+            echo "   1. Verify STAGING_DB_URL format matches:"
+            echo "      postgresql://USER:PASSWORD@HOST:PORT/DATABASE"
+            echo "   2. Check if database allows connections from GitHub Actions IPs"
+            echo "   3. Ensure SSL is properly configured in the URL"
+            echo "   4. Test database URL manually with psql"
+            echo ""
+            echo "::error::Database connection failed"
+            echo "::set-output name=status::failed"
+            exit 1
+          fi
+
+      - name: Check Database Content (if connection works)
+        if: steps.db_test.outputs.status == 'success'
+        run: |
+          echo "📊 Checking database content..."
+          echo "================================"
+          
+          # Check if migration user role exists
+          echo ""
+          echo "🔐 Checking migration_user role..."
+          psql "$STAGING_DB_URL" -c "SELECT rolname FROM pg_roles WHERE rolname = 'migration_user'" || echo "Role check failed"
+          
+          # Check if users table exists
+          echo ""
+          echo "📋 Checking public.users table..."
+          psql "$STAGING_DB_URL" -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users'" || echo "Table check failed"
+          
+          # List all tables
+          echo ""
+          echo "📊 All tables in public schema:"
+          psql "$STAGING_DB_URL" -c "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name" || echo "Table listing failed"
+
+      - name: Generate Connection Report
+        if: always()
+        run: |
+          echo "📋 Connection Test Report"
+          echo "========================"
+          echo "Test Date: $(date)"
+          echo "Workflow: test-db-connection.yml"
+          echo "Status: ${{ steps.db_test.outcome }}"
+          echo ""
+          echo "Next Steps:"
+          if [ "${{ steps.db_test.outcome }}" = "success" ]; then
+            echo "✅ Database connection works! You can now run the migration workflow."
+            echo "   Run: gh workflow run db.yml"
+          else
+            echo "❌ Database connection failed. Please:"
+            echo "   1. Check STAGING_DB_URL format"
+            echo "   2. Verify database accessibility from GitHub Actions"
+            echo "   3. Test URL manually with psql"
+            echo "   4. Update the secret if needed"
+          fi
+          echo ""
+          echo "🔧 To update STAGING_DB_URL secret:"
+          echo "   gh secret set STAGING_DB_URL --body 'your-correct-db-url-here'"
