@@ -86,7 +86,7 @@ jobs:
           echo ""
           
           # Try connection with timeout and full error output
-          if timeout 10 psql "$STAGING_DB_URL" -c "SELECT 1" 2>&1; then
+          if timeout 10 psql "${STAGING_DB_URL}?sslmode=require" -c "SELECT 1" 2>&1; then
             echo ""
             echo "✅ SUCCESS: Database connection works!"
             echo "status=success" >> "$GITHUB_OUTPUT"
@@ -96,7 +96,7 @@ jobs:
             echo "❌ FAILED: Database connection failed"
             echo ""
             echo "📊 Full error diagnostics:"
-            timeout 10 psql "$STAGING_DB_URL" -c "SELECT 1" 2>&1 || true
+            timeout 10 psql "${STAGING_DB_URL}?sslmode=require" -c "SELECT 1" 2>&1 || true
             echo ""
             echo "🔧 Possible causes:"
             echo "   1. Database URL format is incorrect"
@@ -126,17 +126,17 @@ jobs:
           # Check if migration user role exists
           echo ""
           echo "🔐 Checking migration_user role..."
-          psql "$STAGING_DB_URL" -c "SELECT rolname FROM pg_roles WHERE rolname = 'migration_user'" || echo "Role check failed"
+          psql "${STAGING_DB_URL}?sslmode=require" -c "SELECT rolname FROM pg_roles WHERE rolname = 'migration_user'" || echo "Role check failed"
           
           # Check if users table exists
           echo ""
           echo "📋 Checking public.users table..."
-          psql "$STAGING_DB_URL" -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users'" || echo "Table check failed"
+          psql "${STAGING_DB_URL}?sslmode=require" -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users'" || echo "Table check failed"
           
           # List all tables
           echo ""
           echo "📊 All tables in public schema:"
-          psql "$STAGING_DB_URL" -c "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name" || echo "Table listing failed"
+          psql "${STAGING_DB_URL}?sslmode=require" -c "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name" || echo "Table listing failed"
 
       - name: Generate Connection Report
         if: always()
