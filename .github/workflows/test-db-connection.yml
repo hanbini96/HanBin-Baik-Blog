@@ -88,7 +88,7 @@ jobs:
           if timeout 10 psql "$STAGING_DB_URL" -c "SELECT 1" 2>&1; then
             echo ""
             echo "✅ SUCCESS: Database connection works!"
-            echo "::set-output name=status::success"
+            echo "status=success" >> "$GITHUB_OUTPUT"
             exit 0
           else
             echo ""
@@ -112,7 +112,7 @@ jobs:
             echo "   4. Test database URL manually with psql"
             echo ""
             echo "::error::Database connection failed"
-            echo "::set-output name=status::failed"
+            echo "status=failed" >> "$GITHUB_OUTPUT"
             exit 1
           fi
 

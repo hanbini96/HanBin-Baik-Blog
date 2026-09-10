@@ -147,7 +147,7 @@ jobs:
           
           # Method 1: Use GitHub API URL directly to avoid DNS issues
           echo "🚀 Method 1: Official installation script (GitHub API URL)"
-          if curl -fsSL --retry 3 --retry-delay 5 --max-time 60 "https://github.com/supabase/cli/releases/download/v2.115.0/install" > /tmp/supabase_install.sh 2>&1 && bash /tmp/supabase_install.sh; then
+          if curl -fsSL --retry 3 --retry-delay 5 --max-time 60 "https://github.com/supabase/cli/releases/download/v2.115.0/install" > "${{ runner.temp }}/supabase_install.sh" 2>&1 && bash "${{ runner.temp }}/supabase_install.sh"; then
             echo "✅ Official installation succeeded"
             rm -f /tmp/supabase_install.sh
           else
@@ -173,7 +173,7 @@ jobs:
             echo "   Detected system: ${SYSTEM}, architecture: ${ARCH}"
             echo "   Binary URL: $binary_url"
             
-            if curl -fsSL --retry 3 --retry-delay 5 --max-time 60 -o "/tmp/supabase.tar.gz" "$binary_url"; then
+            if curl -fsSL --retry 3 --retry-delay 5 --max-time 60 -o "${{ runner.temp }}/supabase.tar.gz" "$binary_url"; then
               tar -xzf /tmp/supabase.tar.gz -C "$HOME/.supabase/bin" supabase 2>&1
               chmod +x "$HOME/.supabase/bin/supabase"
               rm -f /tmp/supabase.tar.gz
@@ -282,16 +282,16 @@ jobs:
         id: migration_timer
         run: |
           echo "⏱️ Starting migration timer..."
-          echo "START_TIME=$(date +%s%3N)" >> $GITHUB_OUTPUT
+          echo "START_TIME=$(date +%s%3N)" >> "$GITHUB_OUTPUT"
           echo "Migration started at: $(date '+%Y-%m-%d %H:%M:%S')"
           
           if supabase db push --db-url "$STAGING_DB_URL" --debug; then
             echo "✅ Migrations applied successfully to STAGING"
-            echo "MIGRATION_STATUS=success" >> $GITHUB_OUTPUT
+            echo "MIGRATION_STATUS=success" >> "$GITHUB_OUTPUT"
           else
             echo ""
             echo "❌ ERROR: Failed to apply migrations to STAGING"
-            echo "MIGRATION_STATUS=failed" >> $GITHUB_OUTPUT
+            echo "MIGRATION_STATUS=failed" >> "$GITHUB_OUTPUT"
             exit 1
           fi
 
@@ -358,7 +358,7 @@ jobs:
           echo "   Start Time: $(date -d @$((START_TIME/1000)) '+%Y-%m-%d %H:%M:%S')"
           echo "   End Time: $(date -d @$((END_TIME/1000)) '+%Y-%m-%d %H:%M:%S')"
           echo "   Duration: ${DURATION}ms"
-          echo "MIGRATION_DURATION=${DURATION}" >> $GITHUB_ENV
+          echo "MIGRATION_DURATION=${DURATION}" >> "$GITHUB_ENV"
 
 
 
@@ -401,7 +401,7 @@ jobs:
           
           # Method 1: Use GitHub API URL directly to avoid DNS issues
           echo "🚀 Method 1: Official installation script (GitHub API URL)"
-          if curl -fsSL --retry 3 --retry-delay 5 --max-time 60 "https://github.com/supabase/cli/releases/download/v2.115.0/install" > /tmp/supabase_install.sh 2>&1 && bash /tmp/supabase_install.sh; then
+          if curl -fsSL --retry 3 --retry-delay 5 --max-time 60 "https://github.com/supabase/cli/releases/download/v2.115.0/install" > "${{ runner.temp }}/supabase_install.sh" 2>&1 && bash "${{ runner.temp }}/supabase_install.sh"; then
             echo "✅ Official installation succeeded"
             rm -f /tmp/supabase_install.sh
           else
@@ -427,7 +427,7 @@ jobs:
             echo "   Detected system: ${SYSTEM}, architecture: ${ARCH}"
             echo "   Binary URL: $binary_url"
             
-            if curl -fsSL --retry 3 --retry-delay 5 --max-time 60 -o "/tmp/supabase.tar.gz" "$binary_url"; then
+            if curl -fsSL --retry 3 --retry-delay 5 --max-time 60 -o "${{ runner.temp }}/supabase.tar.gz" "$binary_url"; then
               tar -xzf /tmp/supabase.tar.gz -C "$HOME/.supabase/bin" supabase 2>&1
               chmod +x "$HOME/.supabase/bin/supabase"
               rm -f /tmp/supabase.tar.gz
