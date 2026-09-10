@@ -99,4 +99,4 @@ After setting up the secrets:
 
 **Note**: The workflow has fallback mechanisms if Lighthouse artifacts are not available, but proper setup ensures the best results.
 
-Last updated: August 2025
+Last updated: August 2026
