@@ -32,4 +32,7 @@ ON CONFLICT (id) DO UPDATE SET
   bio = EXCLUDED.bio,
   updated_at = NOW();
 
-RAISE NOTICE 'Migration user setup complete';
+DO $$
+BEGIN
+  RAISE NOTICE 'Migration user setup complete';
+END $$;

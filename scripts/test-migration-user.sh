@@ -9,15 +9,22 @@ echo "=================================="
 echo ""
 
 # Configuration
-DB_URL="$STAGING_DB_URL"
 MIGRATION_UUID="$MIGRATION_USER_UUID"
 MIGRATION_PASSWORD="$MIGRATION_USER_PASSWORD"
 
-if [ -z "$DB_URL" ]; then
+if [ -z "$STAGING_DB_URL" ]; then
   echo "❌ Error: STAGING_DB_URL not set"
   echo "   Please set: export STAGING_DB_URL='postgresql://...'"
   exit 1
 fi
+
+DB_URL="$STAGING_DB_URL"
+
+# Supabase requires SSL. Set via env var rather than appending
+# "?sslmode=require" to the URL, since STAGING_DB_URL may already carry
+# its own query string (e.g. "?search_path=public") - string-concatenating
+# a second "?" would produce an invalid URL.
+export PGSSLMODE=require
 
 if [ -z "$MIGRATION_UUID" ]; then
   echo "❌ Error: MIGRATION_USER_UUID not set"

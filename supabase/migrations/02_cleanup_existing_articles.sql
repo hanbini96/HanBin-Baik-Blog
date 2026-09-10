@@ -5,6 +5,7 @@
 DO $$
 DECLARE
   article_count INTEGER;
+  sample_post RECORD;
 BEGIN
   -- Count existing articles
   SELECT COUNT(*) INTO article_count FROM public.posts WHERE deleted_at IS NULL;
@@ -23,7 +24,11 @@ BEGIN
   
   -- Verify articles are ready
   RAISE NOTICE 'Sample articles:';
-  PERFORM * FROM public.posts WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT 3;
+  FOR sample_post IN
+    SELECT title, slug FROM public.posts WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT 3
+  LOOP
+    RAISE NOTICE '  - % (%)', sample_post.title, sample_post.slug;
+  END LOOP;
 END $$;
 
 -- Optional: Verify preservation

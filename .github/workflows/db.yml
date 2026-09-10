@@ -36,6 +36,11 @@ jobs:
       MIGRATION_USER_PASSWORD: ${{ secrets.MIGRATION_USER_PASSWORD }}
       MIGRATION_USER_UUID: ${{ secrets.MIGRATION_USER_UUID }}
       STAGING_DB_URL: ${{ secrets.STAGING_DB_URL }}
+      # Supabase requires SSL. Set via env var rather than appending
+      # "?sslmode=require" to the URL, since STAGING_DB_URL may already
+      # carry its own query string (e.g. "?search_path=public") - string-
+      # concatenating a second "?" would produce an invalid URL.
+      PGSSLMODE: require
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -86,7 +91,17 @@ jobs:
             echo "::error::MIGRATION_USER_UUID secret is not set"
             exit 1
           fi
-          
+
+          # 01_create_migration_user.sql substitutes this directly into a
+          # `uuid` column/comparison - a malformed value fails deep inside
+          # `supabase db push` with an opaque "invalid input syntax for type
+          # uuid" error. Catch it here with a clear message instead.
+          if ! echo "$MIGRATION_USER_UUID" | grep -qE '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'; then
+            echo "❌ ERROR: MIGRATION_USER_UUID is not a valid UUID"
+            echo "::error::MIGRATION_USER_UUID must be a valid UUID (e.g. from 'SELECT gen_random_uuid()')"
+            exit 1
+          fi
+
           echo "✅ All required secrets are set"
           
           # Check database connection
@@ -375,6 +390,8 @@ jobs:
       MIGRATION_USER_PASSWORD: ${{ secrets.MIGRATION_USER_PASSWORD }}
       MIGRATION_USER_UUID: ${{ secrets.MIGRATION_USER_UUID }}
       PROD_DB_URL: ${{ secrets.PROD_DB_URL }}
+      # See matching comment in deploy-staging above.
+      PGSSLMODE: require
     steps:
       - name: Checkout
         uses: actions/checkout@v4
