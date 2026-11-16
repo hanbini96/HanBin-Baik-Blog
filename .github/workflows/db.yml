@@ -137,14 +137,18 @@ jobs:
       - name: Sync Edge Function secrets
         env:
           TURNSTILE_SECRET: ${{ secrets.TURNSTILE_SECRET }}
+          GMAIL_RELAY_URL: ${{ secrets.GMAIL_RELAY_URL }}
+          GMAIL_RELAY_SECRET: ${{ secrets.GMAIL_RELAY_SECRET }}
         run: |
-          if [ -z "$TURNSTILE_SECRET" ]; then
-            echo "TURNSTILE_SECRET not set; skipping"
-            exit 0
-          fi
-          supabase secrets set --project-ref "$SUPABASE_PROJECT_REF" \
-            "TURNSTILE_SECRET=$TURNSTILE_SECRET" \
-            "ALLOWED_ORIGINS=https://hanbinbaik.dev,https://www.hanbinbaik.dev,https://hanbini96.github.io"
+          args=("ALLOWED_ORIGINS=https://hanbinbaik.dev,https://www.hanbinbaik.dev,https://hanbini96.github.io")
+          for name in TURNSTILE_SECRET GMAIL_RELAY_URL GMAIL_RELAY_SECRET; do
+            if [ -n "${!name}" ]; then
+              args+=("$name=${!name}")
+            else
+              echo "$name not set; leaving existing value"
+            fi
+          done
+          supabase secrets set --project-ref "$SUPABASE_PROJECT_REF" "${args[@]}"
 
       - name: Deploy Edge Functions
         run: |

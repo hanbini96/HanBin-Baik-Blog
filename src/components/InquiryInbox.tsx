@@ -170,7 +170,7 @@ export default function InquiryInbox() {
                 <span className={'font-medium ' + (q.status === 'new' ? 'text-white' : 'text-zinc-300')}>
                   {q.name}{q.company ? ` · ${q.company}` : ''}
                 </span>
-                <span className="text-xs text-zinc-500">{fmt(q.created_at)}</span>
+                <span className="text-xs text-zinc-400">{fmt(q.created_at)}</span>
               </div>
               <div className="mt-1 text-xs text-zinc-400">
                 {labelFor(PROJECT_TYPES, q.project_type)} · {labelFor(BUDGETS, q.budget)} · {labelFor(STATUSES, q.status)}
@@ -180,23 +180,23 @@ export default function InquiryInbox() {
             {q.id === selectedId && selected && (
               <div className="space-y-4 border-t border-zinc-800 bg-zinc-950 px-4 py-4 text-sm">
                 <dl className="grid gap-x-4 gap-y-1 sm:grid-cols-[8rem_1fr]">
-                  <dt className="text-zinc-500">Email</dt>
+                  <dt className="text-zinc-400">Email</dt>
                   <dd><a className="underline" href={`mailto:${selected.email}`}>{selected.email}</a></dd>
-                  <dt className="text-zinc-500">Timeline</dt>
+                  <dt className="text-zinc-400">Timeline</dt>
                   <dd>{labelFor(TIMELINES, selected.timeline)}</dd>
-                  <dt className="text-zinc-500">Source</dt>
+                  <dt className="text-zinc-400">Source</dt>
                   <dd>{labelFor(SOURCES, selected.source)}</dd>
-                  <dt className="text-zinc-500">Tools</dt>
+                  <dt className="text-zinc-400">Tools</dt>
                   <dd>{selected.tools.length ? selected.tools.join(', ') : '—'}</dd>
                   {selected.links && (
                     <>
-                      <dt className="text-zinc-500">Links</dt>
+                      <dt className="text-zinc-400">Links</dt>
                       <dd className="break-all">{selected.links}</dd>
                     </>
                   )}
                   {selected.replied_at && (
                     <>
-                      <dt className="text-zinc-500">Replied</dt>
+                      <dt className="text-zinc-400">Replied</dt>
                       <dd>{fmt(selected.replied_at)}</dd>
                     </>
                   )}

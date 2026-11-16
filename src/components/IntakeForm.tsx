@@ -237,7 +237,7 @@ export default function IntakeForm() {
       <div>
         <label className={label} htmlFor="links">Links (specs, screenshots, docs)</label>
         <input id="links" name="links" maxLength={1000} placeholder="https://…" className={input} />
-        <p className="mt-1 text-xs text-zinc-500">Please don't share passwords or API keys here.</p>
+        <p className="mt-1 text-xs text-zinc-400">Please don't share passwords or API keys here.</p>
       </div>
 
       <label className="flex items-start gap-2 text-sm text-zinc-300">
@@ -257,7 +257,7 @@ export default function IntakeForm() {
         {status === 'sending' ? 'Sending…' : 'Send request'}
       </button>
 
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-zinc-400">
         Your details are stored only to respond to this request and are never shared. Email me to have them deleted.
       </p>
     </form>
