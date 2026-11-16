@@ -132,10 +132,9 @@ jobs:
             echo "⏳ Still waiting... ($ELAPSED/$TIMEOUT seconds)"
           done
           
-          # Verify server is running. Astro serves under the configured
-          # base path (astro.config: base "/HanBin-Baik-Blog/"), so the
-          # root path 404s even when the server is healthy.
-          SERVER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:$PORT/HanBin-Baik-Blog/")
+          # Verify server is running. The site is served from the domain
+          # root (no Astro `base` since the hanbinbaik.dev move, #149).
+          SERVER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:$PORT/")
           if [ "$SERVER_STATUS" != "200" ]; then
             echo "❌ ERROR: Server returned status $SERVER_STATUS"
             echo "Server log:"
@@ -146,7 +145,7 @@ jobs:
 
           echo "✅ Server is responding correctly (HTTP 200)"
           echo "📊 Server PID: $SERVER_PID"
-          echo "🌐 Server URL: http://localhost:$PORT/HanBin-Baik-Blog/"
+          echo "🌐 Server URL: http://localhost:$PORT/"
       
       - name: Install Lighthouse CLI globally
         run: |
@@ -181,9 +180,9 @@ jobs:
         continue-on-error: true
         with:
           urls: |
-            http://localhost:${{ env.PORT }}/HanBin-Baik-Blog/
-            http://localhost:${{ env.PORT }}/HanBin-Baik-Blog/blog
-            http://localhost:${{ env.PORT }}/HanBin-Baik-Blog/about
+            http://localhost:${{ env.PORT }}/
+            http://localhost:${{ env.PORT }}/blog
+            http://localhost:${{ env.PORT }}/about
           uploadArtifacts: true
           artifactName: "lighthouse-results"
           temporaryPublicStorage: true
