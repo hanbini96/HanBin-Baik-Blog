@@ -1,6 +1,6 @@
 // Option lists for the project intake form (issue #146).
 // Keep values in sync with the CHECK constraints in
-// supabase/migrations/01_inquiries.sql and supabase/functions/submit-inquiry.
+// supabase/migrations/20261116000000_inquiries.sql and supabase/functions/submit-inquiry.
 
 export const PROJECT_TYPES = [
   { value: 'automation', label: 'Workflow automation (n8n / Zapier / Make)' },

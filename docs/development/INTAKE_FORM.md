@@ -31,19 +31,15 @@ owner. RLS checks `public.is_owner()`, which matches the JWT email against
    `hanbini96.github.io`. Note the site key and secret key.
 2. **GitHub secret:** add `TURNSTILE_SITE_KEY` (repo → Settings → Secrets → Actions).
    The Pages build exposes it as `PUBLIC_TURNSTILE_SITE_KEY`.
-3. **Migration:** `supabase/migrations/01_inquiries.sql` runs on staging via
-   `db.yml`; promote to prod with the manual job as usual.
+3. **Migration:** `supabase/migrations/20261116000000_inquiries.sql` is validated on
+   the PR and applied to production on merge by `db.yml` (see `SUPABASE_CI.md`).
 4. **Owner email** (SQL editor, each environment):
    ```sql
    insert into public.app_owners (email) values ('<your login email, lowercase>');
    ```
-5. **Edge Function:**
-   ```bash
-   supabase functions deploy submit-inquiry
-   supabase secrets set TURNSTILE_SECRET=<secret> \
-     ALLOWED_ORIGINS=https://hanbini96.github.io
-   ```
-   Keep the default JWT verification on; the form sends the anon key.
+5. **Edge Function:** add repo secret `TURNSTILE_SECRET`. On merge, `db.yml`
+   syncs it plus `ALLOWED_ORIGINS` into function secrets and deploys
+   `submit-inquiry`. Keep the default JWT verification on; the form sends the anon key.
 6. **Notifications (optional, recommended):** Supabase → Database → Webhooks →
    new webhook on `public.inquiries` INSERT → POST to your n8n webhook URL with a
    secret header. In n8n: verify header → HubSpot contact + deal → Google Sheet
@@ -73,6 +69,6 @@ pnpm dev                              # leave PUBLIC_TURNSTILE_SITE_KEY empty
 ## Changing options
 
 Option values live in three places and must match:
-`src/lib/inquiryOptions.ts`, the CHECK constraints in `01_inquiries.sql`, and the
+`src/lib/inquiryOptions.ts`, the CHECK constraints in `20261116000000_inquiries.sql`, and the
 arrays in `supabase/functions/submit-inquiry/index.ts`. Add a new migration that
 alters the constraint when adding a value.
