@@ -28,7 +28,7 @@ owner. RLS checks `public.is_owner()`, which matches the JWT email against
 ## One-time setup
 
 1. **Turnstile:** create a widget at Cloudflare → Turnstile for
-   `hanbini96.github.io`. Note the site key and secret key.
+   `hanbinbaik.dev` (and `www.hanbinbaik.dev`). Note the site key and secret key.
 2. **GitHub secret:** add `TURNSTILE_SITE_KEY` (repo → Settings → Secrets → Actions).
    The Pages build exposes it as `PUBLIC_TURNSTILE_SITE_KEY`.
 3. **Migration:** `supabase/migrations/20261116000000_inquiries.sql` is validated on

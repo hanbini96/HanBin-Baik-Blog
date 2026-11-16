@@ -144,7 +144,7 @@ jobs:
           fi
           supabase secrets set --project-ref "$SUPABASE_PROJECT_REF" \
             "TURNSTILE_SECRET=$TURNSTILE_SECRET" \
-            "ALLOWED_ORIGINS=https://hanbini96.github.io"
+            "ALLOWED_ORIGINS=https://hanbinbaik.dev,https://www.hanbinbaik.dev,https://hanbini96.github.io"
 
       - name: Deploy Edge Functions
         run: |

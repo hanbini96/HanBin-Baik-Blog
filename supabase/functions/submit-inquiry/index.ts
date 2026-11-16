@@ -4,13 +4,13 @@
 //
 // Secrets (supabase secrets set ...):
 //   TURNSTILE_SECRET   Cloudflare Turnstile secret key (required in prod)
-//   ALLOWED_ORIGINS    comma-separated, default https://hanbini96.github.io
+//   ALLOWED_ORIGINS    comma-separated, default hanbinbaik.dev (+www) and hanbini96.github.io
 //   TURNSTILE_DISABLED "true" only for local dev
 // SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are injected by Supabase.
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? 'https://hanbini96.github.io')
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? 'https://hanbinbaik.dev,https://www.hanbinbaik.dev,https://hanbini96.github.io')
   .split(',')
   .map((o) => o.trim())
   .filter(Boolean);
