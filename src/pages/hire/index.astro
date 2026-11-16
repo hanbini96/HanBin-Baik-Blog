@@ -1,0 +1,23 @@
+---
+import Base from '../../layouts/Base.astro';
+import IntakeForm from '../../components/IntakeForm';
+---
+
+<Base title="Hire me – HanBin Marrero-Baik">
+  <h1 class="text-3xl font-semibold mb-3">Start a project</h1>
+  <p class="text-zinc-300 mb-6">
+    I build automations, integrations and full stack apps that remove manual work:
+    n8n and Apps Script workflows, HubSpot and CRM integrations, data pipelines, and
+    Django / Vue / React apps deployed with Docker and CI/CD. Tell me what you need and
+    I'll reply within one business day.
+  </p>
+
+  <ul class="mb-8 grid gap-2 text-sm text-zinc-300 sm:grid-cols-2">
+    <li class="rounded-md border border-zinc-800 px-3 py-2">Workflow automation (n8n, Zapier, Make)</li>
+    <li class="rounded-md border border-zinc-800 px-3 py-2">HubSpot / CRM / field-service integrations</li>
+    <li class="rounded-md border border-zinc-800 px-3 py-2">Google Apps Script for Sheets, Forms, Gmail</li>
+    <li class="rounded-md border border-zinc-800 px-3 py-2">Full stack web apps with Docker deployment</li>
+  </ul>
+
+  <IntakeForm client:load />
+</Base>
