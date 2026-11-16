@@ -1,359 +1,157 @@
-name: Supabase DB Migrations
+name: Supabase DB
+
+# Single Supabase project (free tier, public repo):
+#   - Pull requests: apply every migration to a throwaway local Postgres on the
+#     runner. No secrets, no network access to the real database, safe for forks.
+#   - Push to main (or manual run): push migrations + deploy Edge Functions to the
+#     one production project, behind the `production` environment.
+# Connection: PROD_DB_URL must be the Session pooler string (IPv4, port 5432),
+# because GitHub-hosted runners have no IPv6 route to db.<ref>.supabase.co.
+# See docs/development/SUPABASE_CI.md.
 
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - "supabase/migrations/**"
-      - ".github/workflows/db.yml"
   pull_request:
-    branches: [ main, dev-update ]
+    branches: [main, dev-update]
     paths:
-      - "supabase/migrations/**"
+      - "supabase/**"
+      - ".github/workflows/db.yml"
+  push:
+    branches: [main]
+    paths:
+      - "supabase/**"
       - ".github/workflows/db.yml"
   workflow_dispatch: {}
 
+concurrency:
+  group: supabase-db-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  SUPABASE_CLI_VERSION: 2.122.1
+
 jobs:
-  deploy-staging:
-    name: Apply migrations to STAGING
+  validate:
+    name: Validate migrations (local Postgres)
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    env:
-      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
-      - name: Set up pnpm and Node.js
-        uses: ./.github/actions/setup-pnpm
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v3
+        with:
+          version: ${{ env.SUPABASE_CLI_VERSION }}
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Configure DNS and Network Diagnostics
+      - name: Start local Postgres and apply all migrations
         run: |
-          echo "📊 Network Configuration and Connectivity Report:"
-          
-          # Configure fallback DNS servers for GitHub Actions runners
-          echo "🔧 Configuring DNS with fallback servers..."
-          echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf.bak > /dev/null
-          echo "nameserver 1.1.1.1" | sudo tee -a /etc/resolv.conf.bak > /dev/null
-          sudo mv /etc/resolv.conf.bak /etc/resolv.conf
-          echo "✅ DNS configured with Google (8.8.8.8) and Cloudflare (1.1.1.1) fallback servers"
-          
-          echo ""
-          echo "📊 Network Connectivity Report:"
-          echo "   curl: $(which curl && curl --version | head -1 || echo 'NOT AVAILABLE')"
-          echo "   GitHub connectivity: $(curl -I -fsSL https://github.com --max-time 10 2>&1 | head -3 || echo 'FAILED')"
-        
-      - name: Install Supabase CLI
-        run: |
-          echo "🔧 Installing Supabase CLI with comprehensive error handling..."
-          
-          # Create installation directory first
-          mkdir -p "$HOME/.supabase/bin"
-          
-          # Method 1: Use GitHub API URL directly to avoid DNS issues
-          echo "🚀 Method 1: Official installation script (GitHub API URL)"
-          if curl -fsSL --retry 3 --retry-delay 5 --max-time 60 https://github.com/supabase/cli/releases/download/v2.115.0/install > /tmp/supabase_install.sh 2>&1 && bash /tmp/supabase_install.sh; then
-            echo "✅ Official installation succeeded"
-            rm -f /tmp/supabase_install.sh
-          else
-            echo "❌ Official installation failed, trying direct binary download..."
-            rm -f /tmp/supabase_install.sh
-            
-            # Method 2: Direct binary download with correct architecture detection
-            echo "🔄 Method 2: Direct binary download with architecture detection"
-            
-            # Detect system architecture correctly
-            SYSTEM=$(uname -s | tr '[:upper:]' '[:lower:]')
-            MACHINE=$(uname -m)
-            
-            case "$MACHINE" in
-              x86_64) ARCH="amd64" ;;
-              aarch64) ARCH="arm64" ;;
-              arm64) ARCH="arm64" ;;
-              *) ARCH="amd64" ;;
-            esac
-            
-            binary_url="https://github.com/supabase/cli/releases/download/v2.115.0/supabase_${SYSTEM}_${ARCH}.tar.gz"
-            
-            echo "   Detected system: ${SYSTEM}, architecture: ${ARCH}"
-            echo "   Binary URL: $binary_url"
-            
-            if curl -fsSL --retry 3 --retry-delay 5 --max-time 60 -o "/tmp/supabase.tar.gz" "$binary_url"; then
-              tar -xzf /tmp/supabase.tar.gz -C "$HOME/.supabase/bin" supabase 2>&1
-              chmod +x "$HOME/.supabase/bin/supabase"
-              rm -f /tmp/supabase.tar.gz
-              echo "✅ Direct binary download succeeded"
-            else
-              echo "❌ ERROR: All installation methods failed"
-              echo "📊 Diagnostic information:"
-              echo "   curl availability: $(which curl || echo 'NOT FOUND')"
-              echo "   curl version: $(curl --version 2>&1 | head -1 || echo 'FAILED')"
-              echo "   GitHub connectivity: $(curl -I -fsSL --connect-timeout 10 https://github.com 2>&1 | head -3 || echo 'FAILED')"
-              echo "   Installation directory: $(ls -la "$HOME/.supabase/bin" 2>&1 || echo 'NOT CREATED')"
-              echo "   Available binaries: https://github.com/supabase/cli/releases/tag/v2.115.0"
-              exit 1
-            fi
-          fi
-          
-          # Verify installation
-          echo "🔍 Verifying Supabase CLI installation..."
-          echo "$HOME/.supabase/bin" >> $GITHUB_PATH
-          export PATH="$HOME/.supabase/bin:$PATH"
-          
-          if command -v supabase >/dev/null 2>&1; then
-            echo "✅ Supabase CLI installed: $(supabase --version 2>&1)"
-          else
-            echo "❌ ERROR: Installation verification failed"
-            echo "Available binaries:"
-            find "$HOME/.supabase" -type f 2>/dev/null || echo "No files found"
-            exit 1
-          fi
+          supabase db start
+          supabase migration up --local
 
-      - name: Link Supabase CLI to project
-        run: |
-          echo "🔗 Linking Supabase CLI to project..."
-          if supabase link --project-ref "$SUPABASE_PROJECT_REF" 2>&1; then
-            echo "✅ Successfully linked Supabase CLI to project"
-          else
-            echo "⚠️ Linking failed, trying with --debug flag..."
-            if supabase link --project-ref "$SUPABASE_PROJECT_REF" --debug 2>&1; then
-              echo "✅ Successfully linked Supabase CLI to project (with debug)"
-            else
-              echo "❌ ERROR: Failed to link Supabase CLI to project"
-              echo "📊 Diagnostic information:"
-              echo "   Supabase CLI version: $(supabase --version 2>&1 || echo 'NOT AVAILABLE')"
-              echo "   Project reference: $SUPABASE_PROJECT_REF"
-              echo "   Try running: supabase link --project-ref YOUR_PROJECT_REF"
-              exit 1
-            fi
-          fi
-
-      - name: Push migrations to STAGING
+      - name: Verify core schema exists
         env:
-          STAGING_DB_URL: ${{ secrets.STAGING_DB_URL }}
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          LOCAL_DB: postgresql://postgres:postgres@127.0.0.1:54322/postgres
         run: |
-          if [ -z "$STAGING_DB_URL" ]; then
-            echo "❌ ERROR: STAGING_DB_URL secret is missing"
-            echo "Please add the secret to GitHub: https://github.com/hanbini96/HanBin-Baik-Blog/settings/secrets/actions"
-            echo "Connection string format: postgresql://postgres:[password]@db.supabase.co:5432/postgres?search_path=public&sslmode=require"
-            exit 1
-          fi
-          
-          echo "✅ STAGING_DB_URL secret found, applying migrations..."
-          echo "📋 Migration files to be applied:"
-          ls -la supabase/migrations/ || true
-          
-          echo ""
-          echo "🔍 Running comprehensive network diagnostics..."
-          echo "📊 GitHub Actions Runner IP:"
-          curl -s https://api.ipify.org || echo "IP detection failed"
-          echo "🔗 Testing GitHub connectivity:"
-          curl -I -fsSL --max-time 10 https://github.com 2>&1 | head -3 || echo "GitHub connectivity: FAILED"
-          echo "🌐 Testing Supabase API connectivity:"
-          curl -I -fsSL --max-time 10 https://api.supabase.com 2>&1 | head -3 || echo "Supabase API connectivity: FAILED"
-          
-          echo ""
-          echo "🚀 Applying migrations to STAGING database..."
-          echo "💡 Note: If this fails with connection errors, your GitHub Actions IP may be blocked by Supabase network restrictions"
-          echo "📄 Supabase Network Restrictions: https://supabase.com/dashboard/project/_/database/settings"
-          echo ""
-          
-          # Try to push migrations with detailed error handling
-          if supabase db push --db-url "$STAGING_DB_URL" --debug; then
-            echo "✅ Migrations applied successfully to STAGING"
-          else
-            echo ""
-            echo "❌ ERROR: Failed to apply migrations to STAGING"
-            echo ""
-            echo "🔧 Troubleshooting Steps:"
-            echo "1. Check if your GitHub Actions IP is blocked in Supabase network restrictions"
-            echo "2. Verify the STAGING_DB_URL secret is correct"
-            echo "3. Test the database connection manually:"
-            echo "   psql \"$STAGING_DB_URL\" -c \"SELECT version();\""
-            echo ""
-            echo "📊 Debug Information:"
-            echo "   Supabase CLI version: $(supabase --version 2>&1 || echo 'NOT AVAILABLE')"
-            echo "   Project reference: $SUPABASE_PROJECT_REF"
-            echo "   Database URL: ${STAGING_DB_URL:0:20}... (hidden for security)"
-            echo ""
-            echo "💡 Solutions:"
-            echo "   A) Add GitHub Actions IPs to Supabase network allowlist"
-            echo "   B) Use a VPN or proxy in the workflow"
-            echo "   C) Run migrations manually via Supabase Dashboard"
-            echo "   D) Contact Supabase support to whitelist your GitHub Actions IPs"
-            echo ""
-            echo "📄 Supabase Network Settings: https://supabase.com/dashboard/project/_/database/settings"
-            exit 1
-          fi
+          psql "$LOCAL_DB" -v ON_ERROR_STOP=1 -c "
+            do \$\$
+            begin
+              if to_regclass('public.posts') is null then
+                raise exception 'public.posts missing after migrations';
+              end if;
+            end \$\$;"
+          psql "$LOCAL_DB" -c "select version, name from supabase_migrations.schema_migrations order by version;"
 
-  deploy-prod:
-    name: Apply migrations to PROD (manual)
-    needs: deploy-staging
+      - name: Lint database functions
+        run: supabase db lint --local --level error --fail-on error
+
+      - name: Stop local Postgres
+        if: always()
+        run: supabase stop --no-backup
+
+  deploy:
+    name: Deploy to Supabase (production)
+    needs: validate
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    environment: production   # requires manual approval in GitHub Environments
-    permissions:
-      contents: read
+    environment: production
     env:
-      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      PROD_DB_URL: ${{ secrets.PROD_DB_URL }}
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      SUPABASE_DB_URL: ${{ secrets.PROD_DB_URL }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
-      - name: Set up pnpm and Node.js
-        uses: ./.github/actions/setup-pnpm
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v3
+        with:
+          version: ${{ env.SUPABASE_CLI_VERSION }}
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Network Diagnostics
+      - name: Check required secrets
         run: |
-          echo "📊 Network Connectivity Report:"
-          echo "   curl: $(which curl && curl --version | head -1 || echo 'NOT AVAILABLE')"
-          echo "   GitHub connectivity: $(curl -I -fsSL https://github.com --max-time 10 2>&1 | head -3 || echo 'FAILED')"
-
-      - name: Install Supabase CLI
-        run: |
-          echo "🔧 Installing Supabase CLI with comprehensive error handling..."
-          
-          # Create installation directory first
-          mkdir -p "$HOME/.supabase/bin"
-          
-          # Method 1: Use GitHub API URL directly to avoid DNS issues
-          echo "🚀 Method 1: Official installation script (GitHub API URL)"
-          if curl -fsSL --retry 3 --retry-delay 5 --max-time 60 https://github.com/supabase/cli/releases/download/v2.115.0/install > /tmp/supabase_install.sh 2>&1 && bash /tmp/supabase_install.sh; then
-            echo "✅ Official installation succeeded"
-            rm -f /tmp/supabase_install.sh
-          else
-            echo "❌ Official installation failed, trying direct binary download..."
-            rm -f /tmp/supabase_install.sh
-            
-            # Method 2: Direct binary download with correct architecture detection
-            echo "🔄 Method 2: Direct binary download with architecture detection"
-            
-            # Detect system architecture correctly
-            SYSTEM=$(uname -s | tr '[:upper:]' '[:lower:]')
-            MACHINE=$(uname -m)
-            
-            case "$MACHINE" in
-              x86_64) ARCH="amd64" ;;
-              aarch64) ARCH="arm64" ;;
-              arm64) ARCH="arm64" ;;
-              *) ARCH="amd64" ;;
-            esac
-            
-            binary_url="https://github.com/supabase/cli/releases/download/v2.115.0/supabase_${SYSTEM}_${ARCH}.tar.gz"
-            
-            echo "   Detected system: ${SYSTEM}, architecture: ${ARCH}"
-            echo "   Binary URL: $binary_url"
-            
-            if curl -fsSL --retry 3 --retry-delay 5 --max-time 60 -o "/tmp/supabase.tar.gz" "$binary_url"; then
-              tar -xzf /tmp/supabase.tar.gz -C "$HOME/.supabase/bin" supabase 2>&1
-              chmod +x "$HOME/.supabase/bin/supabase"
-              rm -f /tmp/supabase.tar.gz
-              echo "✅ Direct binary download succeeded"
-            else
-              echo "❌ ERROR: All installation methods failed"
-              echo "📊 Diagnostic information:"
-              echo "   curl availability: $(which curl || echo 'NOT FOUND')"
-              echo "   curl version: $(curl --version 2>&1 | head -1 || echo 'FAILED')"
-              echo "   GitHub connectivity: $(curl -I -fsSL --connect-timeout 10 https://github.com 2>&1 | head -3 || echo 'FAILED')"
-              echo "   Installation directory: $(ls -la "$HOME/.supabase/bin" 2>&1 || echo 'NOT CREATED')"
-              echo "   Available binaries: https://github.com/supabase/cli/releases/tag/v2.115.0"
-              exit 1
+          missing=0
+          for name in SUPABASE_ACCESS_TOKEN SUPABASE_PROJECT_REF SUPABASE_DB_URL; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Secret for $name is not set"
+              missing=1
             fi
+          done
+          if [[ -n "$SUPABASE_DB_URL" && "$SUPABASE_DB_URL" != *pooler.supabase.com* ]]; then
+            echo "::warning::PROD_DB_URL is not a pooler URL; db.<ref>.supabase.co is IPv6-only and unreachable from GitHub runners"
           fi
-          
-          # Verify installation
-          echo "🔍 Verifying Supabase CLI installation..."
-          echo "$HOME/.supabase/bin" >> $GITHUB_PATH
-          export PATH="$HOME/.supabase/bin:$PATH"
-          
-          if command -v supabase >/dev/null 2>&1; then
-            echo "✅ Supabase CLI installed: $(supabase --version 2>&1)"
-          else
-            echo "❌ ERROR: Installation verification failed"
-            echo "Available binaries:"
-            find "$HOME/.supabase" -type f 2>/dev/null || echo "No files found"
-            exit 1
+          exit "$missing"
+
+      # The baseline schema (20250101000000..02) was created before migrations were
+      # tracked. If production already has it but no history row, record it as
+      # applied instead of re-running it. No-op once recorded.
+      - name: Record baseline migrations if schema predates history
+        run: |
+          has_schema=$(psql "$SUPABASE_DB_URL" -tAc "select to_regclass('public.posts') is not null")
+          has_history=$(psql "$SUPABASE_DB_URL" -tAc "select to_regclass('supabase_migrations.schema_migrations') is not null and exists (select 1 from supabase_migrations.schema_migrations where version = '20250101000000')" 2>/dev/null || echo f)
+          echo "baseline schema present: $has_schema, recorded: $has_history"
+          if [ "$has_schema" = "t" ] && [ "$has_history" != "t" ]; then
+            supabase migration repair --db-url "$SUPABASE_DB_URL" --status applied \
+              20250101000000 20250101000001 20250101000002
           fi
 
-      - name: Link Supabase CLI to project
-        env:
-          PROD_DB_URL: ${{ secrets.PROD_DB_URL }}
+      # Earlier runs may have recorded versions from the old 00_*.sql names.
+      # Drop history rows that have no matching local file (history only, no schema change).
+      - name: Remove stale migration history rows
         run: |
-          echo "🔗 Linking Supabase CLI to project..."
-          if supabase link --project-ref "$SUPABASE_PROJECT_REF" 2>&1; then
-            echo "✅ Successfully linked Supabase CLI to project"
-          else
-            echo "⚠️ Linking failed, trying with --debug flag..."
-            if supabase link --project-ref "$SUPABASE_PROJECT_REF" --debug 2>&1; then
-              echo "✅ Successfully linked Supabase CLI to project (with debug)"
-            else
-              echo "❌ ERROR: Failed to link Supabase CLI to project"
-              echo "📊 Diagnostic information:"
-              echo "   Supabase CLI version: $(supabase --version 2>&1 || echo 'NOT AVAILABLE')"
-              echo "   Project reference: $SUPABASE_PROJECT_REF"
-              echo "   Try running: supabase link --project-ref YOUR_PROJECT_REF"
-              exit 1
+          remote=$(psql "$SUPABASE_DB_URL" -tAc "select version from supabase_migrations.schema_migrations" 2>/dev/null || true)
+          for v in $remote; do
+            if ! compgen -G "supabase/migrations/${v}_*.sql" > /dev/null; then
+              echo "Stale history version $v (no local file); marking reverted"
+              supabase migration repair --db-url "$SUPABASE_DB_URL" --status reverted "$v"
             fi
-          fi
+          done
 
-      - name: Push migrations to PROD
+      - name: Migration status (before)
+        run: supabase migration list --db-url "$SUPABASE_DB_URL"
+
+      - name: Push migrations
+        run: supabase db push --db-url "$SUPABASE_DB_URL"
+
+      - name: Sync Edge Function secrets
         env:
-          PROD_DB_URL: ${{ secrets.PROD_DB_URL }}
+          TURNSTILE_SECRET: ${{ secrets.TURNSTILE_SECRET }}
         run: |
-          if [ -z "$PROD_DB_URL" ]; then
-            echo "❌ ERROR: PROD_DB_URL secret is missing"
-            echo "Please add the secret to GitHub"
-            exit 1
+          if [ -z "$TURNSTILE_SECRET" ]; then
+            echo "TURNSTILE_SECRET not set; skipping"
+            exit 0
           fi
-          
-          echo "✅ PROD_DB_URL secret found, applying migrations..."
-          echo ""
-          echo "🔍 Running comprehensive network diagnostics..."
-          echo "📊 GitHub Actions Runner IP:"
-          curl -s https://api.ipify.org || echo "IP detection failed"
-          echo "🔗 Testing GitHub connectivity:"
-          curl -I -fsSL --max-time 10 https://github.com 2>&1 | head -3 || echo "GitHub connectivity: FAILED"
-          echo "🌐 Testing Supabase API connectivity:"
-          curl -I -fsSL --max-time 10 https://api.supabase.com 2>&1 | head -3 || echo "Supabase API connectivity: FAILED"
-          
-          echo ""
-          echo "🚀 Applying migrations to PRODUCTION database..."
-          echo "💡 Note: If this fails with connection errors, your GitHub Actions IP may be blocked by Supabase network restrictions"
-          echo "📄 Supabase Network Restrictions: https://supabase.com/dashboard/project/_/database/settings"
-          echo ""
-          
-          if supabase db push --db-url "$PROD_DB_URL" --debug; then
-            echo "✅ Migrations applied successfully to PRODUCTION"
-          else
-            echo ""
-            echo "❌ ERROR: Failed to apply migrations to PRODUCTION"
-            echo ""
-            echo "🔧 Troubleshooting Steps:"
-            echo "1. Check if your GitHub Actions IP is blocked in Supabase network restrictions"
-            echo "2. Verify the PROD_DB_URL secret is correct"
-            echo "3. Test the database connection manually:"
-            echo "   psql \"$PROD_DB_URL\" -c \"SELECT version();\""
-            echo ""
-            echo "📊 Debug Information:"
-            echo "   Supabase CLI version: $(supabase --version 2>&1 || echo 'NOT AVAILABLE')"
-            echo "   Project reference: $SUPABASE_PROJECT_REF"
-            echo ""
-            echo "💡 Solutions:"
-            echo "   A) Add GitHub Actions IPs to Supabase network allowlist"
-            echo "   B) Use a VPN or proxy in the workflow"
-            echo "   C) Run migrations manually via Supabase Dashboard"
-            echo "   D) Contact Supabase support to whitelist your GitHub Actions IPs"
-            echo ""
-            echo "📄 Supabase Network Settings: https://supabase.com/dashboard/project/_/database/settings"
-            exit 1
+          supabase secrets set --project-ref "$SUPABASE_PROJECT_REF" \
+            "TURNSTILE_SECRET=$TURNSTILE_SECRET" \
+            "ALLOWED_ORIGINS=https://hanbini96.github.io"
+
+      - name: Deploy Edge Functions
+        run: |
+          shopt -s nullglob
+          fns=(supabase/functions/*/index.ts)
+          if [ ${#fns[@]} -eq 0 ]; then
+            echo "No Edge Functions to deploy"
+            exit 0
           fi
+          supabase functions deploy --project-ref "$SUPABASE_PROJECT_REF" --use-api

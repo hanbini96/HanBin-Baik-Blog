@@ -26,7 +26,7 @@ jobs:
     if: github.event.workflow_run.conclusion == 'success'
     steps:
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 24
 
@@ -65,7 +65,7 @@ jobs:
           ls -la lighthouse-live-*
 
       - name: Upload Live Site Reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: lighthouse-live-reports-${{ github.event.workflow_run.head_sha }}
           path: |
@@ -74,7 +74,7 @@ jobs:
           retention-days: 30
 
       - name: Update Lighthouse tracking issue
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const fs = require('fs');
