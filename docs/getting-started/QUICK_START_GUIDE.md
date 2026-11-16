@@ -68,16 +68,16 @@ gh run list --workflow performance.yml --limit 5 --json databaseId,status,conclu
 # Test GitHub Pages
 echo "=== GitHub Pages Status ==="
 curl -s -o /dev/null -w "Status Code: %{http_code}\nResponse Time: %{time_total}s\n" \
-  https://hanbini96.github.io/HanBin-Baik-Blog/
+  https://hanbinbaik.dev/
 
 # Test health check endpoint
 echo "=== Health Check Status ==="
 curl -s -o /dev/null -w "Status Code: %{http_code}\n" \
-  https://hanbini96.github.io/HanBin-Baik-Blog/status.json
+  https://hanbinbaik.dev/status.json
 
 # View site
 echo "=== Open Site ==="
-echo "https://hanbini96.github.io/HanBin-Baik-Blog/"
+echo "https://hanbinbaik.dev/"
 ```
 
 **Expected**: Status code `200` for both endpoints

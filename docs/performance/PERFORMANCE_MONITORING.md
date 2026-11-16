@@ -124,7 +124,7 @@ Create Lighthouse configuration for automated performance testing:
 module.exports = {
   ci: {
     collect: {
-      url: ['https://hanbini96.github.io/HanBin-Baik-Blog/'],
+      url: ['https://hanbinbaik.dev/'],
       settings: {
         chromeFlags: '--no-sandbox',
         onlyCategories: ['performance', 'accessibility', 'best-practices', 'seo'],
@@ -172,9 +172,9 @@ jobs:
         uses: treosh/lighthouse-ci-action@v10
         with:
           urls: |
-            https://hanbini96.github.io/HanBin-Baik-Blog/
-            https://hanbini96.github.io/HanBin-Baik-Blog/blog
-            https://hanbini96.github.io/HanBin-Baik-Blog/about
+            https://hanbinbaik.dev/
+            https://hanbinbaik.dev/blog
+            https://hanbinbaik.dev/about
           uploadArtifacts: true
           artifactName: "lighthouse-results"
           temporaryPublicStorage: true
@@ -195,7 +195,7 @@ jobs:
       - name: Run Performance Benchmark
         run: |
           # Collect performance metrics
-          lighthouse https://hanbini96.github.io/HanBin-Baik-Blog/ \
+          lighthouse https://hanbinbaik.dev/ \
             --output=json \
             --output-path=./lighthouse-report.json \
             --chrome-flags="--no-sandbox"
@@ -260,7 +260,7 @@ mkdir -p "$PERF_DATA_DIR"
 
 # Get current metrics
 DATE=$(date +%Y-%m-%d_%H-%M-%S)
-METRICS=$(curl -s https://hanbini96.github.io/HanBin-Baik-Blog/api/performance.json)
+METRICS=$(curl -s https://hanbinbaik.dev/api/performance.json)
 
 # Store metrics
 echo "$METRICS" > "$PERF_DATA_DIR/perf-$DATE.json"

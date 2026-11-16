@@ -88,7 +88,7 @@ export async function GET() {
     
     // Monitoring links
     monitoring: {
-      lighthouse: 'https://pagespeed.web.dev/report?url=https://hanbini96.github.io/HanBin-Baik-Blog/',
+      lighthouse: 'https://pagespeed.web.dev/report?url=https://hanbinbaik.dev/',
       webpagetest: 'https://www.webpagetest.org/result/',
       github_actions: 'https://github.com/hanbini96/HanBin-Baik-Blog/actions'
     }

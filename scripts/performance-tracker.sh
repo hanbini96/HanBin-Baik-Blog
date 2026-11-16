@@ -75,7 +75,7 @@ run_lighthouse() {
     
     # Run Lighthouse on homepage
     echo "Testing homepage performance..."
-    lighthouse https://hanbini96.github.io/HanBin-Baik-Blog/ \
+    lighthouse https://hanbinbaik.dev/ \
         --output=json \
         --output-path="$LIGHTHOUSE_REPORTS_DIR/lighthouse-home-$TIMESTAMP.json" \
         --chrome-flags="--no-sandbox --headless --disable-gpu" \
