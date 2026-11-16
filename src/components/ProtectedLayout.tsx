@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { authRedirectUrl } from '../lib/authRedirect';
 import { useAuth } from '../lib/useAuth';
 import ErrorBoundary from './ErrorBoundary';
 
@@ -14,7 +15,10 @@ export default function ProtectedLayout({ children }: ProtectedLayoutProps) {
   const [loginEmail, setLoginEmail] = useState('');
 
   const handleLogin = async () => {
-    const { error } = await supabase.auth.signInWithOtp({ email: loginEmail });
+    const { error } = await supabase.auth.signInWithOtp({
+      email: loginEmail,
+      options: { emailRedirectTo: authRedirectUrl() },
+    });
     if (!error) {
       setSent(true);
     }

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { authRedirectUrl } from '../lib/authRedirect';
 import ErrorBoundary from './ErrorBoundary';
 
 /**
@@ -12,7 +13,10 @@ export default function AuthPanel() {
   const [sent, setSent] = useState(false);
 
   const login = async () => {
-    const { error } = await supabase.auth.signInWithOtp({ email });
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: authRedirectUrl() },
+    });
     if (!error) {
       setSent(true);
     }
