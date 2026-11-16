@@ -98,11 +98,15 @@ export default function IntakeForm() {
     if (error) {
       let detail = 'Something went wrong. Please try again, or email me directly.';
       try {
-        const body = await (error as { context?: Response }).context?.json();
+        const res = (error as { context?: Response }).context;
+        const body = await res?.json();
+        console.error('[intake] submit-inquiry failed', res?.status, body);
         if (body?.error === 'invalid_fields') {
           detail = `Please check: ${(body.fields as string[]).join(', ')}.`;
         } else if (body?.error === 'captcha_failed') {
           detail = 'Verification failed. Please retry the check.';
+        } else if (body?.error === 'origin_not_allowed') {
+          detail = 'This site is not yet allowed to submit requests. Please email me directly.';
         }
       } catch {
         /* keep generic message */
