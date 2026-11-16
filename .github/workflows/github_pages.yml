@@ -102,6 +102,8 @@ jobs:
 
   deploy:
     needs: build
+    # PRs only build (the required `build` check); never publish PR code to the live site.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
