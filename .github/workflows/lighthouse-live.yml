@@ -42,9 +42,9 @@ jobs:
           # invocation - passing multiple URLs to one call (the previous
           # approach) silently audits just the first and drops the rest.
           declare -A urls=(
-            [home]="https://hanbini96.github.io/HanBin-Baik-Blog/"
-            [blog]="https://hanbini96.github.io/HanBin-Baik-Blog/blog"
-            [about]="https://hanbini96.github.io/HanBin-Baik-Blog/about"
+            [home]="https://hanbinbaik.dev/"
+            [blog]="https://hanbinbaik.dev/blog"
+            [about]="https://hanbinbaik.dev/about"
           )
           for key in "${!urls[@]}"; do
             url="${urls[$key]}"
@@ -80,9 +80,9 @@ jobs:
             const fs = require('fs');
 
             const urlMap = {
-              home: 'https://hanbini96.github.io/HanBin-Baik-Blog/',
-              blog: 'https://hanbini96.github.io/HanBin-Baik-Blog/blog',
-              about: 'https://hanbini96.github.io/HanBin-Baik-Blog/about',
+              home: 'https://hanbinbaik.dev/',
+              blog: 'https://hanbinbaik.dev/blog',
+              about: 'https://hanbinbaik.dev/about',
             };
 
             const pct = (n) => (n == null ? 'n/a' : `${Math.round(n * 100)}%`);

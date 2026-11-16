@@ -2,14 +2,10 @@ import { defineConfig } from 'astro/config';
 import tailwind from '@astrojs/tailwind';
 import react from '@astrojs/react';
 
-// Astro configuration for a static site hosted on GitHub Pages.
-// Set `site` to your GitHub Pages URL (e.g. https://username.github.io/repository).
-// Set `base` to your repository name prefixed with a slash when using the
-// <username>.github.io/<repo> pattern. Remove `base` when deploying to a
-// custom domain or <username>.github.io root repository.
+// Astro configuration for a static site hosted on GitHub Pages with the
+// custom domain https://hanbinbaik.dev (served from the domain root, so no `base`).
 export default defineConfig({
-  site: 'https://hanbini96.github.io',
-  base: "/HanBin-Baik-Blog/",
+  site: 'https://hanbinbaik.dev',
   output: 'static',
   markdown: {
     shikiConfig: {

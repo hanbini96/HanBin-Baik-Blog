@@ -138,7 +138,7 @@ jobs:
           sleep 60
           
           # Test static status endpoint (works with GitHub Pages)
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://hanbini96.github.io/HanBin-Baik-Blog/status.json)
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://hanbinbaik.dev/status.json)
           
           if [ "$STATUS" != "200" ]; then
             echo "❌ Status check failed with status code: $STATUS"
@@ -161,7 +161,7 @@ jobs:
           
           # Make multiple requests to test reliability
           for i in {1..5}; do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://hanbini96.github.io/HanBin-Baik-Blog/)
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://hanbinbaik.dev/)
             if [ "$STATUS" != "200" ]; then
               echo "Uptime check $i failed with status: $STATUS"
               exit 1
