@@ -137,12 +137,11 @@ jobs:
       - name: Sync Edge Function secrets
         env:
           TURNSTILE_SECRET: ${{ secrets.TURNSTILE_SECRET }}
-          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          NOTIFY_EMAIL: ${{ secrets.NOTIFY_EMAIL }}
-          MAIL_FROM: ${{ secrets.MAIL_FROM }}
+          GMAIL_RELAY_URL: ${{ secrets.GMAIL_RELAY_URL }}
+          GMAIL_RELAY_SECRET: ${{ secrets.GMAIL_RELAY_SECRET }}
         run: |
           args=("ALLOWED_ORIGINS=https://hanbinbaik.dev,https://www.hanbinbaik.dev,https://hanbini96.github.io")
-          for name in TURNSTILE_SECRET RESEND_API_KEY NOTIFY_EMAIL MAIL_FROM; do
+          for name in TURNSTILE_SECRET GMAIL_RELAY_URL GMAIL_RELAY_SECRET; do
             if [ -n "${!name}" ]; then
               args+=("$name=${!name}")
             else

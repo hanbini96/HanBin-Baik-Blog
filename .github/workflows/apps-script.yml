@@ -1,0 +1,101 @@
+name: Apps Script relay
+
+# Deploys apps-script/inquiry-relay (Gmail relay for /hire inquiries) with clasp.
+#   - Pull requests: syntax + manifest check only (no secrets).
+#   - Push to main / manual: clasp push, new version, and update the EXISTING
+#     web app deployment so its /exec URL never changes.
+# Setup: docs/development/APPS_SCRIPT_RELAY.md
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "apps-script/**"
+      - ".github/workflows/apps-script.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apps-script/**"
+      - ".github/workflows/apps-script.yml"
+  workflow_dispatch: {}
+
+concurrency:
+  group: apps-script-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  CLASP_VERSION: 3.4.1
+  PROJECT_DIR: apps-script/inquiry-relay
+
+jobs:
+  check:
+    name: Check Apps Script sources
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Syntax-check scripts and manifest
+        run: |
+          for f in "$PROJECT_DIR"/*.js; do node --check "$f"; done
+          node -e "const m=require('./$PROJECT_DIR/appsscript.json'); if(m.webapp?.access!=='ANYONE_ANONYMOUS'){throw new Error('webapp.access must be ANYONE_ANONYMOUS')}; console.log('manifest ok')"
+
+  deploy:
+    name: Deploy with clasp
+    needs: check
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+      APPS_SCRIPT_ID: ${{ secrets.APPS_SCRIPT_ID }}
+      APPS_SCRIPT_DEPLOYMENT_ID: ${{ secrets.APPS_SCRIPT_DEPLOYMENT_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Check required secrets
+        run: |
+          missing=0
+          for name in CLASPRC_JSON APPS_SCRIPT_ID APPS_SCRIPT_DEPLOYMENT_ID; do
+            if [ -z "${!name}" ]; then echo "::error::Secret $name is not set"; missing=1; fi
+          done
+          exit "$missing"
+
+      - name: Write clasp credentials and project file
+        run: |
+          umask 077
+          printf '%s' "$CLASPRC_JSON" > "$RUNNER_TEMP/.clasprc.json"
+          printf '{"scriptId":"%s","rootDir":"."}' "$APPS_SCRIPT_ID" > "$PROJECT_DIR/.clasp.json"
+
+      - name: Push sources
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: npx --yes "@google/clasp@$CLASP_VERSION" -A "$RUNNER_TEMP/.clasprc.json" push --force
+
+      - name: Create version and update web app deployment
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          clasp() { npx --yes "@google/clasp@$CLASP_VERSION" -A "$RUNNER_TEMP/.clasprc.json" "$@"; }
+          out=$(clasp create-version "ci ${GITHUB_RUN_NUMBER}")
+          echo "$out"
+          version=$(echo "$out" | grep -oiE 'version[^0-9]*[0-9]+' | grep -oE '[0-9]+$' | head -1)
+          if [ -z "$version" ]; then echo "::error::Could not parse version number"; exit 1; fi
+          clasp update-deployment "$APPS_SCRIPT_DEPLOYMENT_ID" -V "$version" -d "ci ${GITHUB_RUN_NUMBER} (${GITHUB_SHA:0:7})"
+          clasp list-deployments
+
+      - name: Remove credentials
+        if: always()
+        run: rm -f "$RUNNER_TEMP/.clasprc.json" "$PROJECT_DIR/.clasp.json"

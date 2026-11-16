@@ -9,7 +9,7 @@
 // SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are injected by Supabase.
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { sendInquiryEmails } from './email.ts';
+import { relayInquiryEmails } from './relay.ts';
 
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? 'https://hanbinbaik.dev,https://www.hanbinbaik.dev,https://hanbini96.github.io')
   .split(',')
@@ -169,6 +169,6 @@ Deno.serve(async (req) => {
   }
 
   // Saved: emails are best-effort and never fail the submission.
-  await sendInquiryEmails(result.data);
+  await relayInquiryEmails(result.data);
   return json({ ok: true }, 200, origin);
 });

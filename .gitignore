@@ -62,3 +62,7 @@ supabase/functions/.netlify/
 # === Development Documentation (Issue-specific)
 .github/ISSUES/
 docs/troubleshooting/
+
+# Apps Script (clasp) – generated in CI, never commit
+.clasp.json
+.clasprc.json

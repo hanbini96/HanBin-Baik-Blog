@@ -19,9 +19,10 @@ works for everyone and can never write to production.
 | `SUPABASE_PROJECT_REF` | Project ref (the `<ref>` in `<ref>.supabase.co`) |
 | `PROD_DB_URL` | **Session pooler** string from Supabase → Connect → Session pooler, port **5432**, password URL-encoded: `postgresql://postgres.<ref>:<password>@aws-<n>-<region>.pooler.supabase.com:5432/postgres` |
 | `TURNSTILE_SECRET` | Cloudflare Turnstile secret (synced to Edge Function secrets on deploy) |
-| `RESEND_API_KEY` | Resend API key for inquiry emails (optional; no key = no emails) |
-| `NOTIFY_EMAIL` | Where new-inquiry alerts go |
-| `MAIL_FROM` | Sender, e.g. `HanBin Marrero-Baik <hello@hanbinbaik.dev>` (domain verified in Resend) |
+| `GMAIL_RELAY_URL` | Apps Script relay web app `/exec` URL (optional; unset = no emails) |
+| `GMAIL_RELAY_SECRET` | Shared secret; must equal `RELAY_SECRET` in the script's properties |
+
+Apps Script deploy secrets (`CLASPRC_JSON`, `APPS_SCRIPT_ID`, `APPS_SCRIPT_DEPLOYMENT_ID`) are documented in `docs/development/APPS_SCRIPT_RELAY.md`.
 | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `TURNSTILE_SITE_KEY` | Public values used by the Pages build |
 
 `STAGING_DB_URL` is no longer used and can be deleted.
