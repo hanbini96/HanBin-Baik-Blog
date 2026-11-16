@@ -1,0 +1,12 @@
+---
+import Base from '../../layouts/Base.astro';
+import ProtectedLayout from '../../components/ProtectedLayout';
+import InquiryInbox from '../../components/InquiryInbox';
+---
+
+<Base title="Inbox">
+  <meta name="robots" content="noindex, nofollow" slot="head" />
+  <ProtectedLayout client:load>
+    <InquiryInbox client:load />
+  </ProtectedLayout>
+</Base>
