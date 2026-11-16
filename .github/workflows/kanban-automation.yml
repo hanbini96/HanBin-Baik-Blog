@@ -22,7 +22,7 @@ jobs:
       PORT: 4321
     steps:
       - name: 🔐 Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up pnpm and Node.js
         uses: ./.github/actions/setup-pnpm
@@ -32,7 +32,7 @@ jobs:
 
       - name: 🎯 Add Issue to Project
         if: github.event_name == 'issues' && github.event.action == 'opened'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const projectId = 'PVT_kwHOAPJAUs4BHRuM';
@@ -67,7 +67,7 @@ jobs:
 
       - name: 🔄 Update Issue Status on Label Change
         if: github.event_name == 'issues' && github.event.action == 'labeled'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const projectId = 'PVT_kwHOAPJAUs4BHRuM';
@@ -89,7 +89,7 @@ jobs:
 
       - name: 📤 Add PR to Project
         if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'reopened')
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const projectId = 'PVT_kwHOAPJAUs4BHRuM';
@@ -114,7 +114,7 @@ jobs:
 
       - name: 🔄 Update PR Status on Review Request
         if: github.event_name == 'pull_request' && github.event.action == 'review_requested'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const projectId = 'PVT_kwHOAPJAUs4BHRuM';
@@ -124,7 +124,7 @@ jobs:
 
       - name: ✅ Update Status on PR Merge
         if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const projectId = 'PVT_kwHOAPJAUs4BHRuM';
@@ -134,7 +134,7 @@ jobs:
 
       - name: 🔄 Update Status on Issue Close
         if: github.event_name == 'issues' && github.event.action == 'closed'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const projectId = 'PVT_kwHOAPJAUs4BHRuM';
@@ -144,7 +144,7 @@ jobs:
 
       - name: 📊 Weekly Kanban Report
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const projectId = 'PVT_kwHOAPJAUs4BHRuM';
@@ -181,7 +181,7 @@ jobs:
     if: github.event_name == 'schedule'
     steps:
       - name: 🔐 Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up pnpm and Node.js
         uses: ./.github/actions/setup-pnpm
@@ -190,7 +190,7 @@ jobs:
         run: pnpm install
 
       - name: 🧹 Archive Old Completed Items
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const projectId = 'PVT_kwHOAPJAUs4BHRuM';
@@ -232,7 +232,7 @@ jobs:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     steps:
       - name: 🔐 Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up pnpm and Node.js
         uses: ./.github/actions/setup-pnpm
@@ -241,7 +241,7 @@ jobs:
         run: pnpm install
 
       - name: 📊 Generate Kanban Metrics
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const projectId = 'PVT_kwHOAPJAUs4BHRuM';
