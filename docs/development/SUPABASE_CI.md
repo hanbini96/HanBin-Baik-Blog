@@ -6,7 +6,7 @@
 | --- | --- | --- | --- |
 | Pull request (`supabase/**`) | `validate`: local Postgres on the runner, applies every migration, lints | No | None |
 | Push to `main` (`supabase/**`) | `validate` → `deploy` | Yes (`production` environment) | Yes |
-| Manual run | same as push, optional one-time baseline repair | Yes | Yes |
+| Manual run | same as push | Yes | Yes |
 
 PRs from forks can't read secrets on a public repo. The PR job needs none, so it
 works for everyone and can never write to production.
@@ -42,19 +42,18 @@ every plan.
   the version, so every file needs a unique, increasing timestamp.
 - Create new ones with `supabase migration new <name>`.
 - The baseline schema was renamed from `00_*.sql` to `20250101000000…02`. Those
-  objects already exist in production, so record them once (below) instead of
-  re-running them.
+  objects already exist in production. On its first run, `deploy` sees the
+  schema without a history row and records the three versions as applied
+  instead of re-running them.
 
 ## One-time cutover
 
 1. Supabase: Network Restrictions → allow all IPv4.
 2. GitHub secrets: set `PROD_DB_URL` to the Session pooler string; delete
    `STAGING_DB_URL`.
-3. Merge this workflow PR.
-4. Actions → **Supabase DB** → Run workflow on `main` with
-   **repair_baseline** checked. This marks the three baseline migrations as
-   applied, then runs `db push` (nothing new to apply yet).
-5. Merge feature PRs. Each merge to `main` applies new migrations and deploys
+3. Merge this workflow PR. The push run records the baseline history and
+   applies nothing new.
+4. Merge feature PRs. Each merge to `main` applies new migrations and deploys
    functions automatically.
 
 If production has an approval rule on the `production` environment, approve the

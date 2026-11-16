@@ -20,12 +20,7 @@ on:
     paths:
       - "supabase/**"
       - ".github/workflows/db.yml"
-  workflow_dispatch:
-    inputs:
-      repair_baseline:
-        description: "One-time: record the 3 baseline migrations (20250101*) as already applied on production"
-        type: boolean
-        default: false
+  workflow_dispatch: {}
 
 concurrency:
   group: supabase-db-${{ github.ref }}
@@ -108,11 +103,30 @@ jobs:
           fi
           exit "$missing"
 
-      - name: Repair baseline migration history (one-time)
-        if: ${{ inputs.repair_baseline }}
+      # The baseline schema (20250101000000..02) was created before migrations were
+      # tracked. If production already has it but no history row, record it as
+      # applied instead of re-running it. No-op once recorded.
+      - name: Record baseline migrations if schema predates history
         run: |
-          supabase migration repair --db-url "$SUPABASE_DB_URL" --status applied \
-            20250101000000 20250101000001 20250101000002
+          has_schema=$(psql "$SUPABASE_DB_URL" -tAc "select to_regclass('public.posts') is not null")
+          has_history=$(psql "$SUPABASE_DB_URL" -tAc "select to_regclass('supabase_migrations.schema_migrations') is not null and exists (select 1 from supabase_migrations.schema_migrations where version = '20250101000000')" 2>/dev/null || echo f)
+          echo "baseline schema present: $has_schema, recorded: $has_history"
+          if [ "$has_schema" = "t" ] && [ "$has_history" != "t" ]; then
+            supabase migration repair --db-url "$SUPABASE_DB_URL" --status applied \
+              20250101000000 20250101000001 20250101000002
+          fi
+
+      # Earlier runs may have recorded versions from the old 00_*.sql names.
+      # Drop history rows that have no matching local file (history only, no schema change).
+      - name: Remove stale migration history rows
+        run: |
+          remote=$(psql "$SUPABASE_DB_URL" -tAc "select version from supabase_migrations.schema_migrations" 2>/dev/null || true)
+          for v in $remote; do
+            if ! compgen -G "supabase/migrations/${v}_*.sql" > /dev/null; then
+              echo "Stale history version $v (no local file); marking reverted"
+              supabase migration repair --db-url "$SUPABASE_DB_URL" --status reverted "$v"
+            fi
+          done
 
       - name: Migration status (before)
         run: supabase migration list --db-url "$SUPABASE_DB_URL"
