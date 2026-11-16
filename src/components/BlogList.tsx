@@ -36,7 +36,7 @@ export default function BlogList() {
             <a className="underline" href={`/blog/${p.slug}`}>
               {p.title}
             </a>{' '}
-            <span className="text-sm text-gray-500">
+            <span className="text-sm text-zinc-400">
               — {new Date(p.created_at).toLocaleDateString()}
             </span>
           </li>
