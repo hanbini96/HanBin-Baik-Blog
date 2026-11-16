@@ -32,7 +32,7 @@ jobs:
       LAST_COMMIT: ${{ github.event.head_commit.message }}
       BUILD_TIMESTAMP: ${{ github.event.repository.updated_at }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -62,14 +62,14 @@ jobs:
           
           # Remove symlinks if any (GitHub Pages doesn't allow them)
           SYMLINKS=$(find dist/ -type l | wc -l)
-          if [ $SYMLINKS -gt 0 ]; then
+          if [ "$SYMLINKS" -gt 0 ]; then
             echo "⚠️ Found $SYMLINKS symlinks - removing them"
             find dist/ -type l -delete
           fi
           
           # Remove hard links if any (GitHub Pages doesn't allow them)
           HARDLINKS=$(find dist/ -type f -links +1 | wc -l)
-          if [ $HARDLINKS -gt 0 ]; then
+          if [ "$HARDLINKS" -gt 0 ]; then
             echo "⚠️ Found $HARDLINKS files with hard links - removing duplicates"
             # Remove files that have multiple hard links
             find dist/ -type f -links +1 -delete
@@ -77,7 +77,7 @@ jobs:
           
           # Check for large files (>10MB)
           LARGE_FILES=$(find dist/ -size +10M | wc -l)
-          if [ $LARGE_FILES -gt 0 ]; then
+          if [ "$LARGE_FILES" -gt 0 ]; then
             echo "⚠️ Found $LARGE_FILES files >10MB"
             find dist/ -size +10M -ls
           fi
@@ -86,7 +86,7 @@ jobs:
           FINAL_SYMLINKS=$(find dist/ -type l | wc -l)
           FINAL_HARDLINKS=$(find dist/ -type f -links +1 | wc -l)
           
-          if [ $FINAL_SYMLINKS -gt 0 ] || [ $FINAL_HARDLINKS -gt 0 ]; then
+          if [ "$FINAL_SYMLINKS" -gt 0 ] || [ "$FINAL_HARDLINKS" -gt 0 ]; then
             echo "❌ ERROR: Found remaining symlinks ($FINAL_SYMLINKS) or hard links ($FINAL_HARDLINKS)"
             echo "This will cause GitHub Pages deployment to fail"
             exit 1
@@ -95,7 +95,7 @@ jobs:
           echo "✅ Build artifact verified and ready for deployment"
       
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: github-pages-${{ github.sha }}-${{ github.run_number }}
           path: dist/
@@ -103,6 +103,8 @@ jobs:
 
   deploy:
     needs: build
+    # PRs only build (the required `build` check); never publish PR code to the live site.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -110,22 +112,22 @@ jobs:
       id-token: write
     steps:
       - name: Download build artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: github-pages-${{ github.sha }}-${{ github.run_number }}
           path: dist
 
       - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: dist/
 
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 
   health-check:
     needs: deploy
