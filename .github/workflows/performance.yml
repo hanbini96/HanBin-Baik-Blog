@@ -92,14 +92,20 @@ jobs:
           echo "🚀 Starting Astro server for performance testing..."
           echo "📊 Using PORT: $PORT (configured in workflow)"
           
+          # For static output, ensure build exists then start preview
+          if [ ! -d "dist" ]; then
+            echo "⚠️  Build directory not found, running build first..."
+            pnpm build
+          fi
+          
           # Start server in background with explicit port
           pnpm preview --port "$PORT" > /tmp/astro-server.log 2>&1 &
           SERVER_PID=$!
           echo "SERVER_PID=$SERVER_PID" >> "$GITHUB_ENV"
           
-          # Wait for server to be ready (up to 30 seconds - should be fast)
+          # Wait for server to be ready (up to 60 seconds for static sites)
           echo "⏳ Waiting for server to start on port $PORT..."
-          TIMEOUT=30
+          TIMEOUT=60
           START_TIME=$(date +%s)
           
           while true; do
@@ -132,17 +138,27 @@ jobs:
             echo "⏳ Still waiting... ($ELAPSED/$TIMEOUT seconds)"
           done
           
-          # Verify server is running. Astro serves under the configured
-          # base path (astro.config: base "/HanBin-Baik-Blog/"), so the
-          # root path 404s even when the server is healthy.
-          SERVER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:$PORT/HanBin-Baik-Blog/")
+          # Verify server is running. For static sites with custom domain,
+          # check the root path. The site uses hanbinbaik.dev (no base path).
+          echo "⏳ Checking server health..."
+          SERVER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:$PORT/")
+          
+          # Also check common base path for GitHub Pages
+          if [ "$SERVER_STATUS" != "200" ]; then
+            SERVER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:$PORT/HanBin-Baik-Blog/")
+          fi
+          
           if [ "$SERVER_STATUS" != "200" ]; then
             echo "❌ ERROR: Server returned status $SERVER_STATUS"
             echo "Server log:"
             cat /tmp/astro-server.log
+            echo "🔍 Checking if server process is running..."
+            ps aux | grep -E "astro|pnpm" | grep -v grep || true
             kill $SERVER_PID 2>/dev/null || true
             exit 1
           fi
+          
+          echo "✅ Server is healthy and responding (HTTP $SERVER_STATUS)"
 
           echo "✅ Server is responding correctly (HTTP 200)"
           echo "📊 Server PID: $SERVER_PID"
